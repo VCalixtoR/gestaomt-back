@@ -340,7 +340,7 @@ class ClientsApi(Resource):
       ' c.client_cep, c.client_adress, c.client_city, c.client_neighborhood, c.client_state, c.client_number, c.client_complement, '
       ' client_contact_ids, client_contact_types, client_contact_values, '
       ' client_children_ids, client_children_names, client_children_birth_dates, client_children_product_size_ids, client_children_product_size_names, '
-      ' csale.last_sale_date, csale.last_sale_total_value '
+      ' csale.last_sale_date, stmp.sale_total_value AS last_sale_total_value '
       '   FROM tbl_person p '
       '   JOIN tbl_client c ON p.person_id = c.client_id '
       '   LEFT JOIN ( '
@@ -362,10 +362,11 @@ class ClientsApi(Resource):
       + childrenFilterScrypt +
       '   ) AS cchildren ON c.client_id = cchildren.children_client_id '
       '   LEFT JOIN ( '
-      '     SELECT s.sale_client_id, MAX(s.sale_creation_date_time) AS last_sale_date, s.sale_total_value AS last_sale_total_value '
+      '     SELECT s.sale_client_id, MAX(s.sale_creation_date_time) AS last_sale_date '
       '       FROM tbl_sale s '
       '       GROUP BY s.sale_client_id '
       '   ) AS csale ON c.client_id = csale.sale_client_id '
+      '   LEFT JOIN tbl_sale stmp ON csale.sale_client_id = stmp.sale_client_id '
       + geralFilterScrypt)
     
     countSqlScrypt = (
@@ -391,10 +392,11 @@ class ClientsApi(Resource):
       + childrenFilterScrypt +
       '   ) AS cchildren ON c.client_id = cchildren.children_client_id '
       '   LEFT JOIN ( '
-      '     SELECT s.sale_client_id, MAX(s.sale_creation_date_time) AS last_sale_date, s.sale_total_value AS last_sale_total_value '
+      '     SELECT s.sale_client_id, MAX(s.sale_creation_date_time) AS last_sale_date '
       '       FROM tbl_sale s '
       '       GROUP BY s.sale_client_id '
       '   ) AS csale ON c.client_id = csale.sale_client_id '
+      '   LEFT JOIN tbl_sale stmp ON csale.sale_client_id = stmp.sale_client_id '
       + geralFilterScryptNoLimit)
 
     clientSqlQuery = dbGetAll(geralSqlScrypt, childrenFilterArgs + geralFilterArgs)
