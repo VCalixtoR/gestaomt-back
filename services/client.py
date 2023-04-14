@@ -296,7 +296,7 @@ class ClientApi(Resource):
       return 'Erro ao atualizar o cliente ' + str(e)
     dbCommit()
 
-    return '', 204
+    return [], 204
 
 class ClientsApi(Resource):
     
