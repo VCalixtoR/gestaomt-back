@@ -1,0 +1,10 @@
+__pycache__
+
+private-key.pem
+public-key.pem
+
+.env
+.env.local
+.env.homol
+
+*.bak

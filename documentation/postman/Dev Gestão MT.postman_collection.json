@@ -1,0 +1,1520 @@
+{
+	"info": {
+		"_postman_id": "20036ca2-ab57-4e14-9338-e9a197801786",
+		"name": "Dev Gestão MT",
+		"description": "✨ Welcome to Dev Gestao Mt collection! ✨\n\nThis collection is designed to help to understand the flow of data with requests in the application.\n\nEvery request is coded to work without previous ones by using correct environment and correct request parameters(I made this using Pre-request Scripts and Tests), but to understand, let me explain the steps:\n\nFirst, we need to authenticate using auth-with-login. In this step, we get a JWT token by passing a basic auth token in the request Authorization header with user credentials.\n\nAfter, we can use the JWT as a Bearer token to authenticate in the other requests. \n\nTo update and get more 10 minutes of authentication, we can use the auth-with-token request passing Bearer with JWT in Authorization header.\n\nFinally, with the client authenticated and passing the JWT as Bearer token, we can make all other requests.\n\nGood Coding! 💻",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Authenticate With Login",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.environment.set('token_expires_in_ms', Date.now() + pm.environment.get('token_expiration_interval_ms'));"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.environment.set(\"token_jwt\", JSON.parse(responseBody)['token_jwt']);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "username",
+									"value": "{{user_mail}}",
+									"type": "string"
+								},
+								{
+									"key": "password",
+									"value": "{{user_hash_password}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}auth-with-login",
+							"host": [
+								"{{base_service_url}}auth-with-login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Authenticate With Token",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.environment.set('token_expires_in_ms', Date.now() + pm.environment.get('token_expiration_interval_ms'));"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.environment.set(\"token_jwt\", JSON.parse(responseBody)['token_jwt']);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}auth-with-token",
+							"host": [
+								"{{base_service_url}}auth-with-token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Authentication Token",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}auth-with-token",
+							"host": [
+								"{{base_service_url}}auth-with-token"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "Allow User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"user_id\": 2\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}user/pending",
+							"host": [
+								"{{base_service_url}}user"
+							],
+							"path": [
+								"pending"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create User",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"user_name\":\"Roberta1\",\r\n    \"user_type\":\"E\",\r\n    \"user_birth_date\":\"1975-06-17\",\r\n    \"user_cpf\":\"00000000022\",\r\n    \"user_gender\":\"F\",\r\n    \"user_mail\":\"roberta1@gmail.com\",\r\n    \"user_phone_num\":\"\",\r\n    \"user_hash_password\":\"5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}user",
+							"host": [
+								"{{base_service_url}}user"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Users",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}users",
+							"host": [
+								"{{base_service_url}}users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Pending Users",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}users/pending",
+							"host": [
+								"{{base_service_url}}users"
+							],
+							"path": [
+								"pending"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}user?user_id=1",
+							"host": [
+								"{{base_service_url}}user"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reject User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"user_id\": 7\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}user/pending",
+							"host": [
+								"{{base_service_url}}user"
+							],
+							"path": [
+								"pending"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Employee",
+			"item": [
+				{
+					"name": "Get All Employees",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}employees",
+							"host": [
+								"{{base_service_url}}employees"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Employee",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{base_service_url}}employee?employee_id=3",
+							"host": [
+								"{{base_service_url}}employee"
+							],
+							"query": [
+								{
+									"key": "employee_id",
+									"value": "3"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Employee",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{   \r\n    \"employee_id\": 3,\r\n    \"active\": 0,\r\n    \"comission\": 0.05\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}employee",
+							"host": [
+								"{{base_service_url}}employee"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Employee Sales",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}employee/sales?employee_id=1&limit=10&offset=10&start_date=&end_date=",
+							"host": [
+								"{{base_service_url}}employee"
+							],
+							"path": [
+								"sales"
+							],
+							"query": [
+								{
+									"key": "employee_id",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "offset",
+									"value": "10"
+								},
+								{
+									"key": "start_date",
+									"value": ""
+								},
+								{
+									"key": "end_date",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Employee Sales Summary",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}employee/sales/summary?employee_id=1&start_date=&end_date=",
+							"host": [
+								"{{base_service_url}}employee"
+							],
+							"path": [
+								"sales",
+								"summary"
+							],
+							"query": [
+								{
+									"key": "employee_id",
+									"value": "1"
+								},
+								{
+									"key": "start_date",
+									"value": ""
+								},
+								{
+									"key": "end_date",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Client",
+			"item": [
+				{
+					"name": "Create Client",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"client_name\":\"client created 2\",\r\n    \"client_cpf\":\"00000001002\",\r\n    \"client_gender\":\"M\",\r\n    \"client_birth_date\":\"1988-01-20\",\r\n    \"client_cep\":\"32222-632\",\r\n    \"client_adress\":\"Rua imaginaria 2\",\r\n    \"client_city\":\"imaginario 2\",\r\n    \"client_neighborhood\":\"bairro x2\",\r\n    \"client_state\":\"MG\",\r\n    \"client_number\":\"1233\",\r\n    \"client_complement\":\"perto dos sonhos\",\r\n    \"client_contacts\":[\r\n        {\r\n            \"contact_type\": \"T\",\r\n            \"contact_value\": \"34998881774\"\r\n        },\r\n        {\r\n            \"contact_type\": \"E\",\r\n            \"contact_value\": \"uscreated@gmail.com\"\r\n        }\r\n    ],\r\n    \"client_children\":[\r\n        {\r\n            \"children_name\": \"created s 1\",\r\n            \"children_birth_date\": \"1999-02-20\",\r\n            \"children_product_size_id\": 3\r\n        },\r\n        {\r\n            \"children_name\": \"created s 2\",\r\n            \"children_birth_date\": \"1999-01-20\",\r\n            \"children_product_size_id\": 5\r\n        }\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}client",
+							"host": [
+								"{{base_service_url}}client"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Client",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}client?client_id=10",
+							"host": [
+								"{{base_service_url}}client"
+							],
+							"query": [
+								{
+									"key": "client_id",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Client",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"client_id\": 10,\r\n    \"client_name\":\"updated\",\r\n    \"client_cpf\":\"00000000755\",\r\n    \"client_gender\":\"F\",\r\n    \"client_birth_date\":\"1960-01-20\",\r\n    \"client_cep\":\"12221-232\",\r\n    \"client_adress\":\"Rua 1\",\r\n    \"client_city\":\"i 2\",\r\n    \"client_neighborhood\":\"bairroy\",\r\n    \"client_state\":\"GO\",\r\n    \"client_number\":\"444\",\r\n    \"client_complement\":\"comp\",\r\n    \"client_contacts\":[\r\n        {\r\n            \"contact_type\": \"E\",\r\n            \"contact_value\": \"a@aaaaaaaa\"\r\n        },\r\n        {\r\n            \"contact_type\": \"E\",\r\n            \"contact_value\": \"1@111111\"\r\n        }\r\n    ],\r\n    \"client_children\":[\r\n        {\r\n            \"children_name\": \"upd c 1\",\r\n            \"children_birth_date\": \"1990-02-20\",\r\n            \"children_product_size_id\": 6\r\n        },\r\n        {\r\n            \"children_name\": \"upd c 2\",\r\n            \"children_birth_date\": \"1980-01-20\",\r\n            \"children_product_size_id\": 5\r\n        }\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}client",
+							"host": [
+								"{{base_service_url}}client"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Clients",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}clients?limit=10&offset=0",
+							"host": [
+								"{{base_service_url}}clients"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "client_name",
+									"value": "updated",
+									"disabled": true
+								},
+								{
+									"key": "children_name",
+									"value": "created",
+									"disabled": true
+								},
+								{
+									"key": "children_birth_date_start",
+									"value": "1999-01-20",
+									"disabled": true
+								},
+								{
+									"key": "children_birth_date_end",
+									"value": "1999-01-20",
+									"disabled": true
+								},
+								{
+									"key": "last_sale_date_end",
+									"value": "2023-04-11 12:57:47",
+									"disabled": true
+								},
+								{
+									"key": "last_sale_date_start",
+									"value": "2023-04-11 12:57:47",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Events",
+			"item": [
+				{
+					"name": "Get All Events",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"user_id\": 3,\r\n    \"action_id\": 1,\r\n    \"start_date_time\": \"2022-09-20 00:53:45\",\r\n    \"end_date_time\": \"2022-10-07 14:53:42\",\r\n    \"start_row\": 0,\r\n    \"end_row\": 10\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}events?limit=10&offset=10&user_id=&action_id=&start_date_time=&end_date_time=",
+							"host": [
+								"{{base_service_url}}events"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "offset",
+									"value": "10"
+								},
+								{
+									"key": "user_id",
+									"value": ""
+								},
+								{
+									"key": "action_id",
+									"value": ""
+								},
+								{
+									"key": "start_date_time",
+									"value": ""
+								},
+								{
+									"key": "end_date_time",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Product",
+			"item": [
+				{
+					"name": "Create Product",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"product_code\": \"M1\",\r\n    \"product_name\": \"Vestido 1\",\r\n    \"product_collection_ids\": [1],\r\n    \"product_type_ids\": [],\r\n    \"customized_products\": [\r\n        {\r\n            \"product_color_id\": 1,\r\n            \"product_other_id\": 2,\r\n            \"product_size_id\": 4,\r\n            \"product_price\": 100,\r\n            \"product_quantity\": 100\r\n        }\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}product",
+							"host": [
+								"{{base_service_url}}product"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Product",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}product?product_code=M1",
+							"host": [
+								"{{base_service_url}}product"
+							],
+							"query": [
+								{
+									"key": "product_code",
+									"value": "M1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Product",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"product_id\": 1,\r\n    \"product_code\": \"M3\",\r\n    \"product_name\": \"Vestido 1 atualizado\",\r\n    \"product_collection_ids\": [2],\r\n    \"product_type_ids\": [2],\r\n    \"customized_products\": [\r\n        {\r\n            \"product_other_id\": 2,\r\n            \"product_size_id\": 2,\r\n            \"product_price\": 200,\r\n            \"product_quantity\": 2000\r\n        },\r\n        {\r\n            \"product_other_id\": 2,\r\n            \"product_size_id\": 4,\r\n            \"product_price\": 11.0,\r\n            \"product_quantity\": 111\r\n        }\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}product",
+							"host": [
+								"{{base_service_url}}product"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Product",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"product_id\": 5\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}product",
+							"host": [
+								"{{base_service_url}}product"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Products",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}products?limit=10&offset=0",
+							"host": [
+								"{{base_service_url}}products"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "product_code",
+									"value": "M1006",
+									"disabled": true
+								},
+								{
+									"key": "product_name",
+									"value": "ido",
+									"disabled": true
+								},
+								{
+									"key": "product_color_id",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "product_other_id",
+									"value": "2",
+									"disabled": true
+								},
+								{
+									"key": "product_size_id",
+									"value": "4",
+									"disabled": true
+								},
+								{
+									"key": "product_collection_id",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "product_type_id",
+									"value": "3",
+									"disabled": true
+								},
+								{
+									"key": "product_quantity_initial",
+									"value": "1000",
+									"disabled": true
+								},
+								{
+									"key": "product_quantity_final",
+									"value": "1000",
+									"disabled": true
+								},
+								{
+									"key": "product_price_initial",
+									"value": "500",
+									"disabled": true
+								},
+								{
+									"key": "product_price_final",
+									"value": "560",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Conditional",
+			"item": [
+				{
+					"name": "Create Conditional",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"conditional_client_id\": 10,\r\n    \"conditional_employee_id\": 2,\r\n    \"conditional_has_products\": [\r\n        {\r\n            \"product_id\" : 1,\r\n            \"customized_products\": [\r\n                {\r\n                    \"customized_product_id\" : 1,\r\n                    \"customized_product_conditional_quantity\" : 1\r\n                }\r\n            ]\r\n        }\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}conditional",
+							"host": [
+								"{{base_service_url}}conditional"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Conditional",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}conditional?conditional_id=2",
+							"host": [
+								"{{base_service_url}}conditional"
+							],
+							"query": [
+								{
+									"key": "conditional_id",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Conditional",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"conditional_id\" : 2\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}conditional",
+							"host": [
+								"{{base_service_url}}conditional"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Conditionals",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}conditionals?limit=10&offset=0",
+							"host": [
+								"{{base_service_url}}conditionals"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "conditional_id",
+									"value": "2",
+									"disabled": true
+								},
+								{
+									"key": "conditional_client_name",
+									"value": "Client",
+									"disabled": true
+								},
+								{
+									"key": "conditional_status",
+									"value": "Devolvido",
+									"disabled": true
+								},
+								{
+									"key": "conditional_creation_date_time_start",
+									"value": "2023-04-10 19:03:15",
+									"disabled": true
+								},
+								{
+									"key": "conditional_creation_date_time_end",
+									"value": "2023-04-10 19:03:15",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Sale",
+			"item": [
+				{
+					"name": "Create Sale",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"sale_client_id\": 10,\r\n    \"sale_employee_id\": 2,\r\n    \"sale_payment_method_installment_id\": 1,\r\n    \"sale_total_discount_percentage\": 0.2,\r\n    \"sale_total_value\": 80,\r\n    \"sale_has_products\": [\r\n        {\r\n            \"product_id\" : 1,\r\n            \"customized_products\": [\r\n                {\r\n                    \"customized_product_id\" : 1,\r\n                    \"customized_product_sale_quantity\" : 1\r\n                }\r\n            ]\r\n        }\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}sale",
+							"host": [
+								"{{base_service_url}}sale"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sale",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}sale?sale_id=2",
+							"host": [
+								"{{base_service_url}}sale"
+							],
+							"query": [
+								{
+									"key": "sale_id",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Sale",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"sale_id\" : 2\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_service_url}}sale",
+							"host": [
+								"{{base_service_url}}sale"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Sales",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"let token_expires_in_ms = pm.environment.get('token_expires_in_ms');\r",
+									"if( token_expires_in_ms == '' || Date.now() > token_expires_in_ms ){\r",
+									"    postman.setNextRequest('Authenticate With Login');\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token_jwt}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_service_url}}sales?limit=10&offset=0",
+							"host": [
+								"{{base_service_url}}sales"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "sale_id",
+									"value": "2",
+									"disabled": true
+								},
+								{
+									"key": "sale_client_name",
+									"value": "Client",
+									"disabled": true
+								},
+								{
+									"key": "sale_creation_date_time_end",
+									"value": "2023-04-10 13:00:00",
+									"disabled": true
+								},
+								{
+									"key": "sale_creation_date_time_start",
+									"value": "2023-04-10 12:00:00",
+									"disabled": true
+								},
+								{
+									"key": "sale_status",
+									"value": "Cancelado",
+									"disabled": true
+								},
+								{
+									"key": "sale_total_value_start",
+									"value": "80",
+									"disabled": true
+								},
+								{
+									"key": "sale_total_value_end",
+									"value": "80",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
