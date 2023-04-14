@@ -78,9 +78,9 @@ class EmployeeSalesSummaryApi(Resource):
       ' SELECT * FROM tbl_employee e WHERE e.employee_id = %s; ', [(args['employee_id'])])
     
     if not employeeQuery:
-      'Funcionário não encontrado! ', 404
+      'Funcionário não encontrado!', 404
     if not employeeQuery['employee_active']:
-      'Funcionário não está ativo! ', 401
+      'Funcionário não está ativo!', 401
     
     filterCountScrypt, filterCountArgs =  dbGetSqlFilterScrypt(
       [
@@ -101,7 +101,7 @@ class EmployeeSalesSummaryApi(Resource):
       '   ) AS payment_calc ON pm.payment_method_id = payment_calc.payment_method_id; ', filterCountArgs)
       
     if not paymentSaleQuery:
-      'Pagamentos não encontrados! ', 404
+      'Pagamentos não encontrados!', 404
     
     for paymentRow in paymentSaleQuery:
 

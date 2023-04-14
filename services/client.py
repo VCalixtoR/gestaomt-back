@@ -232,6 +232,16 @@ class ClientApi(Resource):
     client = getClientFromDB(args['client_id'])
     if not client:
       abort(404, 'Cliente não econtrado!')
+    
+    if args.get('client_name') != client['client_name']:
+      sqlQuery = dbGetSingle(' SELECT * FROM tbl_person WHERE person_name = %s; ', [(args['client_name'])])
+      if sqlQuery != None:
+        return 'Nome já utilizado!', 409
+
+    if args.get('client_cpf') != client['client_cpf']:
+      sqlQuery = dbGetSingle(' SELECT * FROM tbl_person WHERE person_cpf = %s; ', [(args['client_cpf'])])
+      if sqlQuery != None:
+        return 'Cpf já utilizado!', 409
 
     try:
       # person
@@ -296,7 +306,7 @@ class ClientApi(Resource):
       return 'Erro ao atualizar o cliente ' + str(e)
     dbCommit()
 
-    return [], 204
+    return {}, 204
 
 class ClientsApi(Resource):
     

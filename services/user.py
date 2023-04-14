@@ -226,7 +226,7 @@ class UserPendingApi(Resource):
 
     user = getUserFromDB(args['user_id'])
     if user == None:
-      abort(404, 'Usuário ' + str(args['user_id']) + ' não econtrado!')
+      abort(404, 'Usuário não econtrado!')
 
     if user['entry_allowed'] == True:
       abort(409, 'Funcionário já autorizado!')
@@ -269,7 +269,7 @@ class UserPendingApi(Resource):
     user = getUserFromDB(args['user_id'])
     
     if user == None:
-      abort(404, 'Usuário ' + str(args['user_id']) + ' não econtrado!')
+      abort(404, 'Usuário não econtrado!')
 
     if user['entry_allowed'] == True:
       abort(409, 'Funcionário já autorizado! Para desativa-lo utilize o update de funcionários')
