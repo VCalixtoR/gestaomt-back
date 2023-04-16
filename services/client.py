@@ -144,14 +144,15 @@ class ClientApi(Resource):
         if not children.get('children_product_size_id'):
           return 'Uma das crianças associadas não possui o tamanho de produtos', 422
 
+    dbObjectIns = startGetDbObject()
     try:
       # inserts person
       dbExecute(
         ' INSERT INTO tbl_person (person_name, person_cpf, person_birth_date, person_gender) VALUES ' \
         ' (%s, %s, %s, %s); ',
-        [args['client_name'], args['client_cpf'], args['client_birth_date'], args['client_gender']], False)
+        [args['client_name'], args['client_cpf'], args['client_birth_date'], args['client_gender']], True, dbObjectIns)
         
-      personIdQuery = dbGetSingle(' SELECT person_id AS client_id FROM tbl_person WHERE person_name = %s; ', [(args['client_name'])], False)
+      personIdQuery = dbGetSingle(' SELECT person_id AS client_id FROM tbl_person WHERE person_name = %s; ', [(args['client_name'])], True, dbObjectIns)
 
       if not personIdQuery:
         raise Exception('Empty select personIdQuery after insert from tbl_person put')
@@ -162,7 +163,7 @@ class ClientApi(Resource):
         ' client_neighborhood, client_state, client_number, client_complement) VALUES '
         ' (%s, %s, %s, %s, %s, %s, %s, %s); ',
         [personIdQuery['client_id'], args['client_cep'], args['client_adress'], args['client_city'], 
-        args['client_neighborhood'], args['client_state'], args['client_number'], args['client_complement']], False)
+        args['client_neighborhood'], args['client_state'], args['client_number'], args['client_complement']], True, dbObjectIns)
       
       # inserts client contacts
       if args.get('client_contacts'):
@@ -170,7 +171,7 @@ class ClientApi(Resource):
           dbExecute( 
             'INSERT INTO tbl_client_contact (contact_client_id, contact_type, contact_value) VALUES '
             ' (%s, %s, %s); ',
-            [personIdQuery['client_id'], contact['contact_type'], contact['contact_value']], False)
+            [personIdQuery['client_id'], contact['contact_type'], contact['contact_value']], True, dbObjectIns)
       
       # inserts client children
       if args.get('client_children'):
@@ -178,13 +179,13 @@ class ClientApi(Resource):
           dbExecute(
             ' INSERT INTO tbl_client_children (children_client_id, children_name, children_birth_date, children_product_size_id) VALUES '
             ' (%s, %s, %s, %s); ',
-            [personIdQuery['client_id'], children['children_name'], children['children_birth_date'], children['children_product_size_id']], False)
+            [personIdQuery['client_id'], children['children_name'], children['children_birth_date'], children['children_product_size_id']], True, dbObjectIns)
 
     except Exception as e:
-      dbRollback()
+      dbRollback(dbObjectIns)
       traceback.print_exc()
       return 'Erro ao criar cliente ' + str(e), 500
-    dbCommit()
+    dbCommit(dbObjectIns)
     
     return {}, 201
   
@@ -243,6 +244,7 @@ class ClientApi(Resource):
       if sqlQuery != None:
         return 'Cpf já utilizado!', 409
 
+    dbObjectIns = startGetDbObject()
     try:
       # person
       dbExecute(
@@ -258,7 +260,7 @@ class ClientApi(Resource):
           client['client_cpf'] if not args.get('client_cpf') else args['client_cpf'],
           client['client_gender'] if not args.get('client_gender') else args['client_gender'],
           client['client_id']
-        ], False)
+        ], True, dbObjectIns)
 
       # client    
       dbExecute(
@@ -280,31 +282,31 @@ class ClientApi(Resource):
           client['client_number'] if not args.get('client_number') else args['client_number'],
           client['client_complement'] if not args.get('client_complement') else args['client_complement'],
           client['client_id']
-        ], False)
+        ], True, dbObjectIns)
 
       # client contacts
       if args.get('client_contacts'):
-        dbExecute(' DELETE FROM tbl_client_contact WHERE contact_client_id = %s; ', [(client['client_id'])], False)
+        dbExecute(' DELETE FROM tbl_client_contact WHERE contact_client_id = %s; ', [(client['client_id'])], True, dbObjectIns)
         for contact in args['client_contacts']:
           dbExecute(
             ' INSERT INTO tbl_client_contact (contact_client_id, contact_type, contact_value) VALUES '
             ' (%s, %s, %s); ',
-            [client['client_id'], contact['contact_type'], contact['contact_value']], False)
+            [client['client_id'], contact['contact_type'], contact['contact_value']], True, dbObjectIns)
 
       # client children
       if args.get('client_children'):
-        dbExecute(' DELETE FROM tbl_client_children WHERE children_client_id = %s; ', [(client['client_id'])], False)
+        dbExecute(' DELETE FROM tbl_client_children WHERE children_client_id = %s; ', [(client['client_id'])], True, dbObjectIns)
         for children in args['client_children']:
           dbExecute(
             ' INSERT INTO tbl_client_children (children_client_id, children_name, children_birth_date, children_product_size_id) VALUES '
             ' (%s, %s, %s, %s); ',
-            [client['client_id'], children['children_name'], children['children_birth_date'], children['children_product_size_id']], False)
+            [client['client_id'], children['children_name'], children['children_birth_date'], children['children_product_size_id']], True, dbObjectIns)
       
     except Exception as e:
-      dbRollback()
+      dbRollback(dbObjectIns)
       traceback.print_exc()
       return 'Erro ao atualizar o cliente ' + str(e)
-    dbCommit()
+    dbCommit(dbObjectIns)
 
     return {}, 204
 

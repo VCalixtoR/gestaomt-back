@@ -4,7 +4,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv, find_dotenv
 
 from utils.sistemConfig import getMissingEnvironmentVar
-from utils.dbUtils import dbStart
+from utils.dbUtils import dbCheckCreateMySqlSchemaTables
 from utils.cryptoFunctions import loadGenerateKeys
 
 from services.authentication import AuthWithLoginApi, AuthWithTokenApi
@@ -27,7 +27,7 @@ if getMissingEnvironmentVar():
     exit()
 
 # starts database
-dbStart()
+dbCheckCreateMySqlSchemaTables()
 # load/generate security keys
 loadGenerateKeys()
 

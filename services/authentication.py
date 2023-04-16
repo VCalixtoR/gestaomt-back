@@ -49,9 +49,9 @@ def isAuthTokenValid(args):
   return (True, '')
     
 def updateUserToken(tokenUserId, tokenDateTime):
-    
+  
   dbExecute('DELETE FROM tbl_auth_token WHERE token_user_id = %s; ',[(tokenUserId)])
-  dbExecute('INSERT INTO tbl_auth_token (token_user_id, token_date_time) VALUES (%s, %s); ', ( tokenUserId, tokenDateTime ))
+  dbExecute('INSERT INTO tbl_auth_token (token_user_id, token_date_time) VALUES (%s, %s); ', [tokenUserId, tokenDateTime])
   
 class AuthWithLoginApi(Resource):
     

@@ -59,16 +59,17 @@ class ProductApi(Resource):
       # size
       if customizedProduct.get('product_size_id') is None:
         return 'Tamanho do produto inválido para uma das variações', 422
-      
+    
+    dbObjectIns = startGetDbObject()
     try:
       # inserts product
       dbExecute(
         ' INSERT INTO tbl_product (product_code, product_name) VALUES (%s, %s) ',
-        [args['product_code'], args['product_name']], False)
+        [args['product_code'], args['product_name']], True, dbObjectIns)
       
       productQuery = dbGetSingle(
         " SELECT product_id FROM tbl_product WHERE product_code = %s AND is_product_active = TRUE; ",
-        [(args['product_code'])], False)
+        [(args['product_code'])], True, dbObjectIns)
       
       if not productQuery:
         raise Exception('Exception empty select after insert from tbl_product put')
@@ -80,14 +81,14 @@ class ProductApi(Resource):
         for collectionId in args['product_collection_ids']:
           dbExecute(
             ' INSERT INTO tbl_product_has_collection (product_id, product_collection_id) VALUES (%s, %s) ',
-            [productId, collectionId], False)
+            [productId, collectionId], True, dbObjectIns)
       
       # inserts has types
       if args.get('product_type_ids') is not None:
         for typeId in args['product_type_ids']:
           dbExecute(
             ' INSERT INTO tbl_product_has_type (product_id, product_type_id) VALUES (%s, %s) ',
-            [productId, typeId], False)
+            [productId, typeId], True, dbObjectIns)
       
       # inserts customized products to finish
       for customizedProduct in args['customized_products']:
@@ -102,13 +103,13 @@ class ProductApi(Resource):
             customizedProduct['product_size_id'],
             customizedProduct['product_price'],
             customizedProduct['product_quantity']
-          ], False)
+          ], True, dbObjectIns)
       
     except Exception as e:
-      dbRollback()
+      dbRollback(dbObjectIns)
       traceback.print_exc()
       return 'Erro ao criar o usuario ' + str(e), 500
-    dbCommit()
+    dbCommit(dbObjectIns)
     
     return {}, 201
     
@@ -273,7 +274,8 @@ class ProductApi(Resource):
       # checks size
       if customizedProduct.get('product_size_id') is None:
         return 'Tamanho do produto inválido para uma das variações', 422
-      
+    
+    dbObjectIns = startGetDbObject()
     try:
       productId = productQuery['product_id']
       
@@ -290,16 +292,16 @@ class ProductApi(Resource):
           ' UPDATE tbl_product SET '
           '   is_product_active = FALSE '
           '   WHERE product_id = %s; ',
-          [(productId)], False)
+          [(productId)], True, dbObjectIns)
 
         # inserts new product and get the new product id to use in customized products updates later
         dbExecute(
           ' INSERT INTO tbl_product (product_code, product_name) VALUES (%s, %s) ',
-          [args['product_code'], args['product_name']], False)
+          [args['product_code'], args['product_name']], True, dbObjectIns)
         
         productId = dbGetSingle(
           " SELECT product_id FROM tbl_product WHERE product_code = %s AND product_name = %s AND is_product_active = TRUE; ",
-          [args['product_code'], args['product_name']], False)
+          [args['product_code'], args['product_name']], True, dbObjectIns)
       
         if not productId:
           raise Exception('Exception empty select after update and insert from tbl_product patch')
@@ -311,14 +313,14 @@ class ProductApi(Resource):
           for collectionId in args['product_collection_ids']:
             dbExecute(
               ' INSERT INTO tbl_product_has_collection (product_id, product_collection_id) VALUES (%s, %s); ',
-              [productId, collectionId], False)
+              [productId, collectionId], True, dbObjectIns)
         
         # inserts has types
         if args.get('product_type_ids') is not None:
           for typeId in args['product_type_ids']:
             dbExecute(
               ' INSERT INTO tbl_product_has_type (product_id, product_type_id) VALUES (%s, %s) ',
-              [productId, typeId], False)
+              [productId, typeId], True, dbObjectIns)
         
       # else removes or updates its collections or types if necessary
       else:
@@ -330,7 +332,7 @@ class ProductApi(Resource):
             '   product_code = %s, '
             '   product_name = %s '
             '   WHERE product_id = %s; ',
-            [args['product_code'], args['product_name'], productId], False)
+            [args['product_code'], args['product_name'], productId], True, dbObjectIns)
 
         # product collections
         if (args.get('product_collection_ids') is not None):
@@ -339,13 +341,13 @@ class ProductApi(Resource):
             if dbProductCollectionId not in args['product_collection_ids']:
               dbExecute(
                 ' DELETE FROM tbl_product_has_collection WHERE product_id = %s AND product_collection_id = %s; ',
-                [productId, dbProductCollectionId], False)
+                [productId, dbProductCollectionId], True, dbObjectIns)
           
           for argsProductCollectionId in args['product_collection_ids']:
             if argsProductCollectionId not in productQuery['product_collection_ids']:
               dbExecute(
                 ' INSERT INTO tbl_product_has_collection (product_id, product_collection_id) VALUES (%s, %s) ',
-                [productId, argsProductCollectionId], False)
+                [productId, argsProductCollectionId], True, dbObjectIns)
         
         # product types
         if (args.get('product_type_ids') is not None):
@@ -354,13 +356,13 @@ class ProductApi(Resource):
             if dbProductTypesId not in args['product_type_ids']:
               dbExecute(
                 ' DELETE FROM tbl_product_has_type WHERE product_id = %s AND product_type_id = %s; ',
-                [productId, dbProductTypesId], False)
+                [productId, dbProductTypesId], True, dbObjectIns)
           
           for argsProductTypeId in args['product_type_ids']:
             if argsProductTypeId not in productQuery['product_type_ids']:
               dbExecute(
                 ' INSERT INTO tbl_product_has_type (product_id, product_type_id) VALUES (%s, %s) ',
-                [productId, argsProductTypeId], False)
+                [productId, argsProductTypeId], True, dbObjectIns)
 
       ### Customized Products ###
 
@@ -387,7 +389,7 @@ class ProductApi(Resource):
               argsCustomizedProduct['product_price'],
               argsCustomizedProduct['product_quantity'],
               dbCustomizedProduct['customized_product_id']
-            ], False)
+            ], True, dbObjectIns)
           
           # set updated = True for those customized products to avoid reupdating later
           argsCustomizedProduct['updated'] = True
@@ -400,12 +402,12 @@ class ProductApi(Resource):
               ' UPDATE tbl_customized_product SET '
               '   is_customized_product_active = FALSE '
               '   WHERE customized_product_id = %s; ',
-              [(dbCustomizedProduct['customized_product_id'])], False)
+              [(dbCustomizedProduct['customized_product_id'])], True, dbObjectIns)
           # delete if not
           else:
             dbExecute(
               ' DELETE FROM tbl_customized_product WHERE customized_product_id = %s; ',
-              [(dbCustomizedProduct['customized_product_id'])], False)
+              [(dbCustomizedProduct['customized_product_id'])], True, dbObjectIns)
 
       # for the rest of not updated customized products, inserts in db    
       for argsCustomizedProduct in args['customized_products']:
@@ -421,13 +423,13 @@ class ProductApi(Resource):
               argsCustomizedProduct['product_size_id'],
               argsCustomizedProduct['product_price'],
               argsCustomizedProduct['product_quantity']
-            ], False)
+            ], True, dbObjectIns)
       
     except Exception as e:
-      dbRollback()
+      dbRollback(dbObjectIns)
       traceback.print_exc()
       return 'Erro ao atualizar o produto ' + str(e), 500
-    dbCommit()
+    dbCommit(dbObjectIns)
 
     return {}, 204
   
@@ -480,6 +482,7 @@ class ProductApi(Resource):
     if customizedProductQuery == None:
       return 'Produtos customizados inexistentes', 422
     
+    dbObjectIns = startGetDbObject()
     try:
       hasImmutableRows = False
 
@@ -494,24 +497,24 @@ class ProductApi(Resource):
               ' UPDATE tbl_customized_product SET '
               '   is_customized_product_active = FALSE '
               '   WHERE customized_product_id = %s; ',
-              [(customizedProduct['customized_product_id'])], False)
+              [(customizedProduct['customized_product_id'])], True, dbObjectIns)
           
         else:
           dbExecute(
             ' DELETE FROM tbl_customized_product WHERE customized_product_id = %s; ',
-            [(customizedProduct['customized_product_id'])], False)
+            [(customizedProduct['customized_product_id'])], True, dbObjectIns)
 
       # types
       for hasTypesId in productQuery['product_has_type_ids']:
         dbExecute(
           ' DELETE FROM tbl_product_has_type WHERE product_has_type_id = %s; ',
-          [(hasTypesId)], False)
+          [(hasTypesId)], True, dbObjectIns)
 
       # collections
       for hasCollectionId in productQuery['product_has_collection_ids']:
         dbExecute(
           ' DELETE FROM tbl_product_has_collection WHERE product_has_collection_id = %s; ',
-          [(hasCollectionId)], False)
+          [(hasCollectionId)], True, dbObjectIns)
 
       # product
       if productQuery['is_product_immutable'] or hasImmutableRows:
@@ -519,18 +522,18 @@ class ProductApi(Resource):
           ' UPDATE tbl_product SET '
           '   is_product_active = FALSE '
           '   WHERE product_id = %s; ',
-          [(args['product_id'])], False)
+          [(args['product_id'])], True, dbObjectIns)
         
       else:
         dbExecute(
           ' DELETE FROM tbl_product WHERE product_id = %s; ',
-          [(args['product_id'])], False)
+          [(args['product_id'])], True, dbObjectIns)
       
     except Exception as e:
-      dbRollback()
+      dbRollback(dbObjectIns)
       traceback.print_exc()
       return 'Erro ao criar o usuario ' + str(e), 500
-    dbCommit()
+    dbCommit(dbObjectIns)
     
     return {}, 204
 

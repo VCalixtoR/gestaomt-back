@@ -1,52 +1,43 @@
 import mysql.connector
 import os
-import time
 
-# db variables
-myDB = None
-myCursor = None
+def dbCheckCreateMySqlSchemaTables():
 
-# used to refresh db connection
-connTimeOutMin = 10
-lastRequestTime = None
-
-def dbStart():
-
-  global lastRequestTime, myDB, myCursor
-
-  if not myDB == None and not myDB.is_connected():
-    return
-
-  myDB = mysql.connector.connect(
+  dbConnection = mysql.connector.connect(
     host = os.getenv('SQL_HOST'),
     port = os.getenv('SQL_PORT'),
     user = os.getenv('SQL_USER'),
     passwd = os.getenv('SQL_PASSWORD'),
     auth_plugin='mysql_native_password')
 
-  if myDB:
+  if dbConnection:
     print('# Connection to database successfull')
   else:
     print('# Connection to database failed')
     return
 
-  myCursor = myDB.cursor(buffered=True, dictionary=True)
-  myCursor.execute('show databases')
+  dbCursor = dbConnection.cursor(buffered=True, dictionary=True)
+  dbCursor.execute('show databases')
 
   schemaFound = False
-  for db in myCursor:
+  for db in dbCursor:
     if os.getenv('SQL_SCHEMA') == db['Database']:
       schemaFound = True
       break
 
   if not schemaFound:
     print('# Schema ' + str(os.getenv('SQL_SCHEMA')) + ' not found! creating schema and tables')
-    dbCreate()
+    dbCreate(dbConnection, dbCursor)
     print('# Schema ' + str(os.getenv('SQL_SCHEMA')) + ' and tables created')
   else:
     print('# Schema ' + str(os.getenv('SQL_SCHEMA')) + ' is in database')
+  
+  dbCursor.close()
+  dbConnection.close()
 
-  myDB = mysql.connector.connect(
+def startGetDbObject():
+
+  dbConnection = mysql.connector.connect(
     host = os.getenv('SQL_HOST'),
     port = os.getenv('SQL_PORT'),
     user = os.getenv('SQL_USER'),
@@ -54,117 +45,132 @@ def dbStart():
     database = os.getenv('SQL_SCHEMA'),
     auth_plugin = 'mysql_native_password')
 
-  myCursor = myDB.cursor(buffered=True, dictionary=True)
+  dbCursor = dbConnection.cursor(buffered=True, dictionary=True)
 
-def isConnectedToDb():
+  return dbObject(dbConnection, dbCursor, True)
 
-  global connTimeOutMin, lastRequestTime, myDB, myCursor
+def closeDbObject(dbObjectIns):
 
-  if myDB is None or myCursor is None or not myDB.is_connected():
-    return False
+  if not isinstance(dbObjectIns, dbObject):
+    print("# Failed to close connection, db instance not a db class object")
+    return
   
-  # if the last time a request runs plus timestamp is less than actual time refresh connection if necessary
-  actualTime = time.time()
-  if not lastRequestTime or (lastRequestTime+connTimeOutMin*60 < actualTime):
-    try:
-      dbGetSingle('SELECT 1;', commitToUpdate=False)
-    except Exception as e:
-      return False
+  if dbObjectIns.dbTransactionDone == False:
+    print("# Warning, closing connection withot a commit or rollback, forced a commit to close the connection")
+    dbObjectIns.dbConnection.commit()
+
+  dbObjectIns.dbCursor.close()
+  dbObjectIns.dbConnection.close()
+
+def dbRollback(dbObjectIns):
+
+  if not isinstance(dbObjectIns, dbObject):
+    print("# Failed to rollback, db instance not a db class object")
+    return
+  
+  dbObjectIns.dbTransactionDone = True
+  dbObjectIns.dbConnection.rollback()
+  closeDbObject(dbObjectIns)
+
+def dbCommit(dbObjectIns):
+
+  if not isinstance(dbObjectIns, dbObject):
+    print("# Failed to commit, db instance not a db class object")
+    return
+  
+  dbObjectIns.dbTransactionDone = True
+  dbObjectIns.dbConnection.commit()
+  closeDbObject(dbObjectIns)
+
+def dbExecute(sqlScrypt, values=None, transactionMode=False, dbObjectIns=None):
+
+  if transactionMode:
+    if not dbObjectIns:
+      print('# Error during transaction, db instance cannot be null')
+      return
+    elif not isinstance(dbObjectIns, dbObject):
+      print("# Error during transaction, db instance not a db class object")
+      return
+    dbObjectIns.dbTransactionDone = False
+    
+  if not transactionMode:
+    dbObjectIns = startGetDbObject()
+    dbObjectIns.dbConnection.commit()
       
-  lastRequestTime = actualTime
-  return True
-
-def getSqlScrypt(name):
-
-  textFile = open('./sql/' + name + '.sql', 'r')
-  strFile = textFile.read()
-  textFile.close()
-
-  return strFile
-
-def dbRollback():
-
-  global myDB, myCursor
-
-  if not isConnectedToDb():
-    dbStart()
-  
-  myDB.rollback()
-
-def dbCommit():
-
-  global myDB, myCursor
-
-  if not isConnectedToDb():
-    dbStart()
-
-  myDB.commit()
-
-def dbExecute(sqlScrypt, values=None, commit=True):
-
-  global myDB, myCursor
-
-  if not isConnectedToDb():
-    dbStart()
-      
   if values != None:
-    myCursor.execute(sqlScrypt, values)
+    dbObjectIns.dbCursor.execute(sqlScrypt, values)
   else:
-    myCursor.execute(sqlScrypt)
+    dbObjectIns.dbCursor.execute(sqlScrypt)
   
-  if(commit):
-    print('# Operation Commited')
-    myDB.commit()
+  if not transactionMode:
+    dbCommit(dbObjectIns)
 
-def dbExecuteMany(sqlScrypt, values=None, commit=True):
+def dbExecuteMany(sqlScrypt, values=None, transactionMode=False, dbObjectIns=None):
 
-  global myDB, myCursor
-
-  if not isConnectedToDb():
-    dbStart()
+  if transactionMode:
+    if not dbObjectIns:
+      print('# Error during transaction, db instance cannot be null')
+      return
+    elif not isinstance(dbObjectIns, dbObject):
+      print("# Error during transaction, db instance not a db class object")
+      return
+    dbObjectIns.dbTransactionDone = False
+    
+  if not transactionMode:
+    dbObjectIns = startGetDbObject()
+    dbObjectIns.dbConnection.commit()
   
   if values != None:
-    myCursor.executemany(sqlScrypt, values)
+    dbObjectIns.dbCursor.executemany(sqlScrypt, values)
   else:
-    myCursor.executemany(sqlScrypt)
+    dbObjectIns.dbCursor.executemany(sqlScrypt)
   
-  if(commit):
-    print('# Operation Commited')
-    myDB.commit()
+  if not transactionMode:
+    dbCommit(dbObjectIns)
 
-def dbGetSingle(sqlScrypt, values=None, commitToUpdate=True):
+def dbGetSingle(sqlScrypt, values=None, transactionMode=False, dbObjectIns=None):
 
-  global myDB, myCursor
-
-  if not isConnectedToDb():
-    dbStart()
-  
-  if(commitToUpdate):
-    myDB.commit()
+  if transactionMode:
+    if not dbObjectIns:
+      print('# Error during transaction, db instance cannot be null')
+      return
+    elif not isinstance(dbObjectIns, dbObject):
+      print("# Error during transaction, db instance not a db class object")
+      return
+    dbObjectIns.dbTransactionDone = False
+    
+  if not transactionMode:
+    dbObjectIns = startGetDbObject()
+    dbObjectIns.dbConnection.commit()
   
   if values != None:
-    myCursor.execute(sqlScrypt, values)
+    dbObjectIns.dbCursor.execute(sqlScrypt, values)
   else:
-    myCursor.execute(sqlScrypt)
+    dbObjectIns.dbCursor.execute(sqlScrypt)
 
-  return myCursor.fetchone()
+  return dbObjectIns.dbCursor.fetchone()
 
-def dbGetAll(sqlScrypt, values=None, commitToUpdate=True):
+def dbGetAll(sqlScrypt, values=None, transactionMode=False, dbObjectIns=None):
 
-  global myDB, myCursor
-
-  if not isConnectedToDb():
-    dbStart()
-
-  if(commitToUpdate):
-    myDB.commit()
+  if transactionMode:
+    if not dbObjectIns:
+      print('# Error during transaction, db instance cannot be null')
+      return
+    elif not isinstance(dbObjectIns, dbObject):
+      print("# Error during transaction, db instance not a db class object")
+      return
+    dbObjectIns.dbTransactionDone = False
+    
+  if not transactionMode:
+    dbObjectIns = startGetDbObject()
+    dbObjectIns.dbConnection.commit()
   
   if values != None:
-    myCursor.execute(sqlScrypt, values)
+    dbObjectIns.dbCursor.execute(sqlScrypt, values)
   else:
-    myCursor.execute(sqlScrypt)
+    dbObjectIns.dbCursor.execute(sqlScrypt)
 
-  return myCursor.fetchall()
+  return dbObjectIns.dbCursor.fetchall()
 
 def dbGetSqlFilterScrypt(argsObj, groupByCollumns=None, orderByCollumns=None, limitValue=None, offsetValue=None, initialSqlJunctionClause=' WHERE ', filterEnding=';', getFilterWithoutLimits=False):
 
@@ -221,17 +227,19 @@ def dbGetSqlFilterScrypt(argsObj, groupByCollumns=None, orderByCollumns=None, li
 
   return filterScrypt, filterValues
 
-def dbCreate():
+def getSqlScrypt(name):
 
-  global myDB, myCursor
+  textFile = open('./sql/' + name + '.sql', 'r')
+  strFile = textFile.read()
+  textFile.close()
 
-  if myDB is None:
-    dbStart()
+  return strFile
 
-  myCursor = myDB.cursor(buffered=True, dictionary=True)
-  myCursor.execute('create schema ' + str(os.getenv('SQL_SCHEMA')))
+def dbCreate(dbConnection, dbCursor):
 
-  myDB = mysql.connector.connect(
+  dbCursor.execute('create schema ' + str(os.getenv('SQL_SCHEMA')))
+
+  dbConnection = mysql.connector.connect(
     host = os.getenv('SQL_HOST'),
     port = os.getenv('SQL_PORT'),
     user = os.getenv('SQL_USER'),
@@ -240,6 +248,12 @@ def dbCreate():
     auth_plugin = 'mysql_native_password')
 
   # opens and close cursor to avoid sync problens
-  myCursor = myDB.cursor(buffered=True, dictionary=True)
-  myCursor.execute(getSqlScrypt('create_mt_schema'))
-  myCursor.close()
+  dbCursor = dbConnection.cursor(buffered=True, dictionary=True)
+  dbCursor.execute(getSqlScrypt('create_mt_schema'))
+  dbCursor.close()
+
+class dbObject():
+  def __init__(self, dbConnection, dbCursor, dbTransactionDone):
+    self.dbConnection = dbConnection
+    self.dbCursor = dbCursor
+    self.dbTransactionDone = dbTransactionDone

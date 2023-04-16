@@ -113,15 +113,17 @@ class SaleApi(Resource):
     # verifies with only two decimal places to avoid small precision differences between apps
     if ('{:.2f}'.format(calculatedSaleValue-calculatedSaleValue*args['sale_total_discount_percentage'])) != '{:.2f}'.format(args['sale_total_value']):
       return 'Preço esperado diferente do preço calculado no sistema', 422
-      
+    
+    dbObjectIns = startGetDbObject()
     try:
       # inserts sale and gets sale id
       dbExecute(
         ' INSERT INTO tbl_sale (sale_client_id, sale_employee_id, sale_payment_method_installment_id, sale_total_discount_percentage, sale_total_value) VALUES '
         '   (%s, %s, %s, %s, %s) ',
-        [args['sale_client_id'], args['sale_employee_id'], args['sale_payment_method_installment_id'], args['sale_total_discount_percentage'], args['sale_total_value']], False)
+        [args['sale_client_id'], args['sale_employee_id'], args['sale_payment_method_installment_id'], args['sale_total_discount_percentage'], args['sale_total_value']],
+        True, dbObjectIns)
       
-      saleIdQuery = dbGetSingle(' SELECT LAST_INSERT_ID() AS sale_id; ', False)
+      saleIdQuery = dbGetSingle(' SELECT LAST_INSERT_ID() AS sale_id; ', None, True, dbObjectIns)
       
       if not saleIdQuery:
         raise Exception('Exception empty select saleIdQuery after insert from tbl_sale put')
@@ -131,7 +133,7 @@ class SaleApi(Resource):
         dbExecute(
           ' UPDATE tbl_product '
           '   SET is_product_immutable = TRUE '
-          '   WHERE product_id = %s; ', [(product['product_id'])], False)
+          '   WHERE product_id = %s; ', [(product['product_id'])], True, dbObjectIns)
         
         for customizedProduct in product['customized_products']:
           # set customized product immutable and adjusts its quantity
@@ -144,19 +146,20 @@ class SaleApi(Resource):
               (customizedProduct['customized_product_quantity'] - customizedProduct['customized_product_sale_quantity']), 
               customizedProduct['customized_product_id']
             ], 
-            False)
+            True, dbObjectIns)
           
           # inserts sale has product
           dbExecute(
             ' INSERT INTO tbl_sale_has_product (sale_id, product_id, customized_product_id, sale_has_product_price, sale_has_product_quantity) VALUES '
             '   (%s, %s, %s, %s, %s); ', 
-            [saleIdQuery['sale_id'], product['product_id'], customizedProduct['customized_product_id'], customizedProduct['customized_product_price'], customizedProduct['customized_product_sale_quantity']], False)
+            [saleIdQuery['sale_id'], product['product_id'], customizedProduct['customized_product_id'], customizedProduct['customized_product_price'], customizedProduct['customized_product_sale_quantity']],
+            True, dbObjectIns)
       
     except Exception as e:
-      dbRollback()
+      dbRollback(dbObjectIns)
       traceback.print_exc()
       return 'Erro ao criar a venda ' + str(e), 500
-    dbCommit()
+    dbCommit(dbObjectIns)
     
     return {}, 201
     

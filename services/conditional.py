@@ -88,14 +88,15 @@ class ConditionalApi(Resource):
         # associates product quantity in args to use later
         customizedProduct['customized_product_quantity'] = customProductQuery['customized_product_quantity']
 
+    dbObjectIns = startGetDbObject()
     try:
       # inserts conditional and gets its id
       dbExecute(
         ' INSERT INTO tbl_conditional (conditional_client_id, conditional_employee_id) VALUES '
         '   (%s, %s) ',
-        [args['conditional_client_id'], args['conditional_employee_id']], False)
+        [args['conditional_client_id'], args['conditional_employee_id']], True, dbObjectIns)
       
-      conditionalIdQuery = dbGetSingle(' SELECT LAST_INSERT_ID() AS conditional_id; ', False)
+      conditionalIdQuery = dbGetSingle(' SELECT LAST_INSERT_ID() AS conditional_id; ', None, True, dbObjectIns)
       
       if not conditionalIdQuery:
         raise Exception('Exception empty select conditionalIdQuery after insert from tbl_conditional put')
@@ -105,7 +106,7 @@ class ConditionalApi(Resource):
         dbExecute(
           ' UPDATE tbl_product '
           '   SET is_product_immutable = TRUE '
-          '   WHERE product_id = %s; ', [(product['product_id'])], False)
+          '   WHERE product_id = %s; ', [(product['product_id'])], True, dbObjectIns)
         
         for customizedProduct in product['customized_products']:
           # set customized product immutable and adjusts its quantity
@@ -118,19 +119,20 @@ class ConditionalApi(Resource):
               (customizedProduct['customized_product_quantity'] - customizedProduct['customized_product_conditional_quantity']), 
               customizedProduct['customized_product_id']
             ], 
-            False)
+            True, dbObjectIns)
           
           # inserts conditional has product
           dbExecute(
             ' INSERT INTO tbl_conditional_has_product (conditional_id, product_id, customized_product_id, conditional_has_product_quantity) VALUES '
             '   (%s, %s, %s, %s); ', 
-            [conditionalIdQuery['conditional_id'], product['product_id'], customizedProduct['customized_product_id'], customizedProduct['customized_product_conditional_quantity']], False)
+            [conditionalIdQuery['conditional_id'], product['product_id'], customizedProduct['customized_product_id'], customizedProduct['customized_product_conditional_quantity']],
+            True, dbObjectIns)
       
     except Exception as e:
-      dbRollback()
+      dbRollback(dbObjectIns)
       traceback.print_exc()
       return 'Erro ao criar a condicional ' + str(e), 500
-    dbCommit()
+    dbCommit(dbObjectIns)
     
     return {}, 201
     

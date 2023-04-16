@@ -81,61 +81,38 @@ def createUserInDB(user):
   if userQuery != None:
     return 'Cpf já utilizado!'
 
+  dbObjectIns = startGetDbObject()
   try:
     dbExecute(
       ' INSERT INTO tbl_person (person_name, person_cpf, person_birth_date, person_gender) VALUES (%s, %s, %s, %s) ',
-      [user['name'], user['cpf'], user['birth_date'], user['gender']], False)
+      [user['name'], user['cpf'], user['birth_date'], user['gender']], True, dbObjectIns)
     
     dbExecute(
       ' INSERT INTO tbl_user (user_id, user_type, user_mail, user_phone_num, user_hash_password) VALUES '
       ' (LAST_INSERT_ID(), %s, %s, %s, %s); ',
-      [user['type'], user['mail'], user['phone_num'], user['hash_password']], False)
+      [user['type'], user['mail'], user['phone_num'], user['hash_password']], True, dbObjectIns)
   except Exception as e:
-    dbRollback()
+    dbRollback(dbObjectIns)
     traceback.print_exc()
     return 'Erro ao criar o usuario ' + str(e)
-  dbCommit()
+  dbCommit(dbObjectIns)
 
   return 'Usuário criado!'
 
-def updateUserInDB(user):
-
-  if user == None:
-    return 'Objeto usuário não formatado!'
-  
-  dbExecute(
-    ' UPDATE tbl_person SET '
-    '   person_name = %s, '
-    '   person_birth_date = %s, '
-    '   person_cpf = %s, '
-    '   person_gender = %s '
-    '   WHERE person_id = %s; ',
-    [user['name'], user['birth_date'], user['cpf'], user['gender'], user['id']], False)
-
-  dbExecute(
-    ' UPDATE tbl_user SET '
-    '   user_type = %s, '
-    '   user_mail = %s, '
-    '   user_phone_num = %s, '
-    '   user_entry_allowed = %s '
-    '   WHERE user_id = %s; ',
-    [user['type'], user['mail'], user['phone_num'], user['entry_allowed'], user['id']], False)
-  
-  return 'Usuário atualizado!'
-
 def deleteUserFromDb(userId):
 
+  dbObjectIns = startGetDbObject()
   try:
     sqlScrypt = "DELETE FROM tbl_user WHERE user_id = %s;"
-    dbExecute(sqlScrypt, [(userId)])
+    dbExecute(sqlScrypt, [(userId)], True, dbObjectIns)
     
     sqlScrypt = "DELETE FROM tbl_person WHERE person_id = %s;"
-    dbExecute(sqlScrypt, [(userId)])
+    dbExecute(sqlScrypt, [(userId)], True, dbObjectIns)
   except Exception as e:
-    dbRollback()
+    dbRollback(dbObjectIns)
     traceback.print_exc()
     return 'Erro ao atualizar o usuario ' + str(e)
-  dbCommit()
+  dbCommit(dbObjectIns)
 
   return 'Usuário apagado!'
 
@@ -237,20 +214,35 @@ class UserPendingApi(Resource):
 
     user['entry_allowed'] = True
 
+    dbObjectIns = startGetDbObject()
     try:
-      updateUserMsg = updateUserInDB(user)
-      if updateUserMsg != 'Usuário atualizado!':
-        raise Exception(updateUserMsg)
+      dbExecute(
+        ' UPDATE tbl_person SET '
+        '   person_name = %s, '
+        '   person_birth_date = %s, '
+        '   person_cpf = %s, '
+        '   person_gender = %s '
+        '   WHERE person_id = %s; ',
+        [user['name'], user['birth_date'], user['cpf'], user['gender'], user['id']], True, dbObjectIns)
+
+      dbExecute(
+        ' UPDATE tbl_user SET '
+        '   user_type = %s, '
+        '   user_mail = %s, '
+        '   user_phone_num = %s, '
+        '   user_entry_allowed = %s '
+        '   WHERE user_id = %s; ',
+        [user['type'], user['mail'], user['phone_num'], user['entry_allowed'], user['id']], True, dbObjectIns)
 
       dbExecute(
         ' INSERT INTO tbl_employee (employee_id, employee_comission) VALUES '
         ' (%s, %s); ', 
-        [user['id'], 0.03])
+        [user['id'], 0.03], True, dbObjectIns)
     except Exception as e:
-      dbRollback()
+      dbRollback(dbObjectIns)
       traceback.print_exc()
       return 'Erro ao permitir o funcionario ' + str(e), 409
-    dbCommit()
+    dbCommit(dbObjectIns)
 
     return {}, 204
 
