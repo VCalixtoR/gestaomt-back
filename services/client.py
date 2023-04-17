@@ -320,8 +320,8 @@ class ClientsApi(Resource):
     argsParser.add_argument('offset', location='args', type=int, help='start row from db, required', required=True)
     argsParser.add_argument('client_name', location='args', type=str, help='client name')
     argsParser.add_argument('children_name', location='args', type=str, help='client children name')
-    argsParser.add_argument('children_birth_date_start', location='args', type=str, help='start client children birth date')
-    argsParser.add_argument('children_birth_date_end', location='args', type=str, help='end client children birth date')
+    argsParser.add_argument('children_birth_month_day_start', location='args', type=str, help='start client children birth day and month')
+    argsParser.add_argument('children_birth_month_day_end', location='args', type=str, help='end client children birth day and month')
     argsParser.add_argument('last_sale_date_start', location='args', type=str, help='start for last sale date')
     argsParser.add_argument('last_sale_date_end', location='args', type=str, help='end for last sale date')
     args = argsParser.parse_args()
@@ -330,11 +330,23 @@ class ClientsApi(Resource):
     if not isValid:
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
 
+    if args.get('children_birth_month_day_start'):
+      splitedDM = args['children_birth_month_day_start'].split('-')
+      
+      if not splitedDM or len(splitedDM) != 2:
+        return 'incorrect month_day start', 422
+    
+    if args.get('children_birth_month_day_end'):
+      splitedDM = args['children_birth_month_day_end'].split('-')
+      
+      if not splitedDM or len(splitedDM) != 2:
+        return 'incorrect month_day end', 422
+
     childrenFilterScrypt, childrenFilterArgs = dbGetSqlFilterScrypt(
       [
         {'filterCollum':'children_name', 'filterOperator':'LIKE%_%', 'filterValue':args.get('children_name')},
-        {'filterCollum':'children_birth_date', 'filterOperator':'>=', 'filterValue':args.get('children_birth_date_start')},
-        {'filterCollum':'children_birth_date', 'filterOperator':'<=', 'filterValue':args.get('children_birth_date_end')}
+        {'filterCollum':'DATE_FORMAT(children_birth_date, \'%m-%' + 'd\')', 'filterOperator':'>=', 'filterValue':args.get('children_birth_month_day_start')},
+        {'filterCollum':'DATE_FORMAT(children_birth_date, \'%m-%' + 'd\')', 'filterOperator':'<=', 'filterValue':args.get('children_birth_month_day_end')}
       ], groupByCollumns='children_client_id', filterEnding='')
 
     geralFilterScrypt, geralFilterScryptNoLimit, geralFilterArgs, geralFilterArgsNoLimit =  dbGetSqlFilterScrypt(
@@ -345,7 +357,7 @@ class ClientsApi(Resource):
       ],
       orderByCollumns='p.person_name', limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
 
-    leftJoinOnChildren = not args.get('children_name') and not args.get('children_birth_date_start') and not args.get('children_birth_date_end')
+    leftJoinOnChildren = not args.get('children_name') and not args.get('children_birth_month_day_start') and not args.get('children_birth_month_day_end')
 
     geralSqlScrypt = (
       ' SELECT c.client_id, p.person_name AS client_name, p.person_cpf AS client_cpf, p.person_birth_date AS client_birth_date, p.person_gender AS client_gender, '
