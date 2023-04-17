@@ -22,7 +22,7 @@ def formatGroupedClientContacts(contactIds, contactTypes, contactValues):
   return contacts
 
 def formatGroupedClientChildren(childrenIds, childrenNames, childrenBirthDates, childrenSizeIds, childrenSizeNames):
-    
+  
   if not childrenIds or not childrenNames or not childrenBirthDates or not childrenSizeNames:
     return None
 
@@ -34,7 +34,13 @@ def formatGroupedClientChildren(childrenIds, childrenNames, childrenBirthDates, 
   childrenSizeNamesL = childrenSizeNames.split(',')
 
   for i in range(len(childrenIdsL)):
-    children.append({ 'children_id' : childrenIdsL[i], 'children_name' : childrenNamesL[i], 'children_birth_date' : str(childrenBirthDatesL[i]), 'children_product_size_id' : childrenSizeIdsL[i], 'children_product_size_name' : childrenSizeNamesL[i] })
+    children.append({ 
+      'children_id' : childrenIdsL[i], 
+      'children_name' : childrenNamesL[i], 
+      'children_birth_date' : str(childrenBirthDatesL[i]) if childrenBirthDatesL[i] and childrenBirthDatesL[i] != 'NULL' else '', 
+      'children_product_size_id' : childrenSizeIdsL[i], 
+      'children_product_size_name' : childrenSizeNamesL[i] 
+    })
 
   return children
 
@@ -57,7 +63,7 @@ def getClientFromDB(clientId):
     '     SELECT children_client_id, '
     '	    GROUP_CONCAT(children_id SEPARATOR \',\') AS client_children_ids, '
     '	    GROUP_CONCAT(children_name SEPARATOR \',\') AS client_children_names, '
-    '     GROUP_CONCAT(children_birth_date SEPARATOR \',\') AS client_children_birth_dates, '
+    '     GROUP_CONCAT(IFNULL(children_birth_date, \'NULL\') SEPARATOR \',\') AS client_children_birth_dates, '
     '     GROUP_CONCAT(product_size_id SEPARATOR \',\') AS client_children_product_size_ids, '
     '     GROUP_CONCAT(product_size_name SEPARATOR \',\') AS client_children_product_size_names '
     '	      FROM tbl_client_children '
@@ -65,7 +71,6 @@ def getClientFromDB(clientId):
     '       GROUP BY children_client_id '
     '   ) AS cchildren ON c.client_id = cchildren.children_client_id '
     '   WHERE client_id = %s; ', [(clientId)])
-
   if not clientQuery:
     return None
   
@@ -139,8 +144,6 @@ class ClientApi(Resource):
       for children in args['client_children']:
         if not children.get('children_name'):
           return 'Uma das crianças associadas não possui o nome', 422
-        if not children.get('children_birth_date'):
-          return 'Uma das crianças associadas não possui o aniversário', 422
         if not children.get('children_product_size_id'):
           return 'Uma das crianças associadas não possui o tamanho de produtos', 422
 
@@ -179,7 +182,12 @@ class ClientApi(Resource):
           dbExecute(
             ' INSERT INTO tbl_client_children (children_client_id, children_name, children_birth_date, children_product_size_id) VALUES '
             ' (%s, %s, %s, %s); ',
-            [personIdQuery['client_id'], children['children_name'], children['children_birth_date'], children['children_product_size_id']], True, dbObjectIns)
+            [
+              personIdQuery['client_id'], 
+              children['children_name'], 
+              children.get('children_birth_date') if children.get('children_birth_date') else None, 
+              children['children_product_size_id']
+            ], True, dbObjectIns)
 
     except Exception as e:
       dbRollback(dbObjectIns)
@@ -243,6 +251,22 @@ class ClientApi(Resource):
       sqlQuery = dbGetSingle(' SELECT * FROM tbl_person WHERE person_cpf = %s; ', [(args['client_cpf'])])
       if sqlQuery != None:
         return 'Cpf já utilizado!', 409
+    
+    # verify contacts
+    if args.get('client_contacts'):
+      for contact in args['client_contacts']:
+        if not contact.get('contact_type'):
+          return 'Um dos contatos associados não possui o tipo', 422
+        if not contact.get('contact_value'):
+          return 'Um dos contatos associados está sem o valor', 422
+    
+    # verify children
+    if args.get('client_children'):
+      for children in args['client_children']:
+        if not children.get('children_name'):
+          return 'Uma das crianças associadas não possui o nome', 422
+        if not children.get('children_product_size_id'):
+          return 'Uma das crianças associadas não possui o tamanho de produtos', 422
 
     dbObjectIns = startGetDbObject()
     try:
@@ -300,7 +324,12 @@ class ClientApi(Resource):
           dbExecute(
             ' INSERT INTO tbl_client_children (children_client_id, children_name, children_birth_date, children_product_size_id) VALUES '
             ' (%s, %s, %s, %s); ',
-            [client['client_id'], children['children_name'], children['children_birth_date'], children['children_product_size_id']], True, dbObjectIns)
+            [
+              client['client_id'],
+              children['children_name'],
+              children.get('children_birth_date') if children.get('children_birth_date') else None,
+              children['children_product_size_id']
+            ], True, dbObjectIns)
       
     except Exception as e:
       dbRollback(dbObjectIns)
@@ -378,7 +407,7 @@ class ClientsApi(Resource):
       '     SELECT children_client_id, '
       '	      GROUP_CONCAT(children_id SEPARATOR \',\') AS client_children_ids, '
       '	      GROUP_CONCAT(children_name SEPARATOR \',\') AS client_children_names, '
-      '       GROUP_CONCAT(children_birth_date SEPARATOR \',\') AS client_children_birth_dates, '
+      '       GROUP_CONCAT(IFNULL(children_birth_date, \'NULL\') SEPARATOR \',\') AS client_children_birth_dates, '
       '       GROUP_CONCAT(product_size_id SEPARATOR \',\') AS client_children_product_size_ids, '
       '       GROUP_CONCAT(product_size_name SEPARATOR \',\') AS client_children_product_size_names '
       '	        FROM tbl_client_children '
