@@ -63,10 +63,13 @@ class AuthWithLoginApi(Resource):
 
     userMail, userHashPassword = b64decode(args['Authorization'].replace('Basic ', '')).decode('utf-8').split(':', 1)
       
-    userQuery = dbGetSingle('SELECT user_id, user_hash_password FROM tbl_user WHERE user_mail = %s; ', [(userMail)])
+    userQuery = dbGetSingle('SELECT user_id, user_hash_password, user_entry_allowed FROM tbl_user WHERE user_mail = %s; ', [(userMail)])
       
-    if userQuery == None or len(userQuery) != 2:
+    if userQuery == None:
       abort(401, 'Usuário não encontrado!')
+    
+    if not userQuery['user_entry_allowed']:
+      abort(401, 'Você precisa de permissão de um admin para entrar!')
     
     if userQuery['user_hash_password'] != userHashPassword:
       abort(401, 'Senha incorreta!')
