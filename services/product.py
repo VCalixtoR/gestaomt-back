@@ -673,6 +673,7 @@ class ProductInfoApi(Resource):
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
     
     query = {}
+    query['products'] = dbGetAll(' SELECT product_id, product_name, product_code FROM tbl_product p WHERE p.is_product_active = TRUE; ')
     query['collections'] = dbGetAll(' SELECT * FROM tbl_product_collection ORDER BY product_collection_pos; ')
     query['types'] = dbGetAll(' SELECT * FROM tbl_product_type ORDER BY product_type_pos; ')
     query['colors'] = dbGetAll(' SELECT * FROM tbl_product_color ORDER BY product_color_pos; ')

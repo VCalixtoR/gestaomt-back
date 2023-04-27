@@ -190,7 +190,7 @@ CREATE TABLE tbl_client_children(
 	children_id INT NOT NULL AUTO_INCREMENT,
     children_client_id INT NOT NULL,
     children_name VARCHAR(50) NOT NULL,
-    children_birth_date DATE NOT NULL,
+    children_birth_date DATE,
 	children_product_size_id INT NOT NULL,
     PRIMARY KEY (children_id),
     FOREIGN KEY (children_client_id) REFERENCES tbl_client(client_id),
@@ -281,8 +281,10 @@ CREATE TABLE tbl_conditional_has_product(
     CHECK (conditional_has_product_quantity >= 0)
 );
 
-INSERT INTO tbl_person (person_name, person_cpf, person_birth_date, person_gender) VALUES 
+INSERT INTO tbl_person (person_name, person_cpf, person_birth_date, person_gender) VALUES
+	("Postman","99999999999", "1999-07-21","M"),
 	("Admin","00000000000", "1999-07-21","M");
 
-INSERT INTO tbl_user (user_id, user_type, user_mail, user_phone_num, user_hash_password) VALUES 
-	(1,"A","admin@gmail.com","+55997791557","03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4");
+INSERT INTO tbl_user (user_id, user_type, user_mail, user_phone_num, user_hash_password, user_entry_allowed) VALUES
+	(1,"A","postman@gmail.com","+55997791557","03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4", TRUE),
+	(2,"A","admin@gmail.com","+55997791557","03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4", TRUE);

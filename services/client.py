@@ -345,8 +345,9 @@ class ClientsApi(Resource):
       
     argsParser = reqparse.RequestParser()
     argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
-    argsParser.add_argument('limit', location='args', type=int, help='number of rows returned, required', required=True)
-    argsParser.add_argument('offset', location='args', type=int, help='start row from db, required', required=True)
+    argsParser.add_argument('only_client_names_cpfs', location='args', type=str)
+    argsParser.add_argument('limit', location='args', type=int, help='number of rows returned')
+    argsParser.add_argument('offset', location='args', type=int, help='start row from db')
     argsParser.add_argument('client_name', location='args', type=str, help='client name')
     argsParser.add_argument('children_name', location='args', type=str, help='client children name')
     argsParser.add_argument('children_birth_month_day_start', location='args', type=str, help='start client children birth day and month')
@@ -358,6 +359,14 @@ class ClientsApi(Resource):
     isValid, returnMessage = isAuthTokenValid(args)
     if not isValid:
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
+
+    if args.get('only_client_names_cpfs') and args['only_client_names_cpfs'].lower() in ['true', '1']:
+      clientSqlQuery = dbGetAll(
+        ' SELECT c.client_id, p.person_name AS client_name, p.person_cpf AS client_cpf '
+        '   FROM tbl_person p '
+        '   JOIN tbl_client c ON p.person_id = c.client_id ')
+      
+      return { 'clients': clientSqlQuery }
 
     if args.get('children_birth_month_day_start'):
       splitedDM = args['children_birth_month_day_start'].split('-')
