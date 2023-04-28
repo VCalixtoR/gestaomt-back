@@ -15,7 +15,7 @@ from services.client import ClientApi, ClientsApi
 from services.event import EventsApi
 from services.product import ProductApi, ProductInfoApi, ProductsApi
 from services.conditional import ConditionalApi, ConditionalsApi
-from services.sale import SaleApi, SalesApi
+from services.sale import SaleApi, SalesApi, SaleInfoApi
 
 # For homol and production ambients like render.com the environment variables are already loaded
 if getMissingEnvironmentVar():
@@ -64,4 +64,5 @@ api.add_resource(ConditionalApi, '/conditional')
 api.add_resource(ConditionalsApi, '/conditionals')
 
 api.add_resource(SaleApi, '/sale')
+api.add_resource(SaleInfoApi, '/sale/info')
 api.add_resource(SalesApi, '/sales')

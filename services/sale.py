@@ -1,7 +1,7 @@
 from flask import Flask, abort
 from flask_restful import Resource, Api, reqparse
-import datetime
 import traceback
+import os
 
 from utils.dbUtils import *
 from services.authentication import isAuthTokenValid
@@ -305,3 +305,26 @@ class SalesApi(Resource):
       saleRow['sale_creation_date_time'] = str(saleRow['sale_creation_date_time'])
     
     return { 'count': countSales['counts'], 'sales': salesQuery }, 200
+  
+class SaleInfoApi(Resource):
+    
+  def get(self):
+      
+    argsParser = reqparse.RequestParser()
+    argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
+    args = argsParser.parse_args()
+    
+    isValid, returnMessage = isAuthTokenValid(args)
+    if not isValid:
+      abort(401, 'Autenticação com o token falhou: ' + returnMessage)
+    
+    query = dbGetSingle(
+      ' SELECT AUTO_INCREMENT AS last_sale_id FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s; ',
+      [os.getenv('SQL_SCHEMA'), 'tbl_sale'])
+    
+    query['payment_methods'] = dbGetAll(
+      ' SELECT pmi.payment_method_installment_id, pm.payment_method_name, pmi.payment_method_Installment_number '
+      '   FROM tbl_payment_method pm '
+      '   JOIN tbl_payment_method_installment pmi ON pm.payment_method_id = pmi.payment_method_id; ')
+    
+    return query, 200

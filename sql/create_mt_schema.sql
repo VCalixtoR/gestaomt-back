@@ -218,7 +218,7 @@ INSERT INTO tbl_payment_method(payment_method_name) VALUES
     ('Cheque'),
     ('Dinheiro'),
     ('Pix');
-    
+   
 INSERT INTO tbl_payment_method_installment(payment_method_id, payment_method_Installment_number) VALUES 
 	(1, 1),(1, 2),(1, 3),
     (2, 1),
@@ -283,8 +283,15 @@ CREATE TABLE tbl_conditional_has_product(
 
 INSERT INTO tbl_person (person_name, person_cpf, person_birth_date, person_gender) VALUES
 	("Postman","99999999999", "1999-07-21","M"),
-	("Admin","00000000000", "1999-07-21","M");
+	("Admin","00000000000", "1999-07-21","M"),
+    ("Funcionario","11111111111", "1999-07-21","M");
 
 INSERT INTO tbl_user (user_id, user_type, user_mail, user_phone_num, user_hash_password, user_entry_allowed) VALUES
 	(1,"A","postman@gmail.com","+55997791557","03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4", TRUE),
-	(2,"A","admin@gmail.com","+55997791557","03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4", TRUE);
+	(2,"A","admin@gmail.com","+55997791557","03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4", TRUE),
+    (3,"E","funcionario@gmail.com","+55997791557","03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4", FALSE);
+    
+INSERT INTO tbl_employee (employee_id, employee_active, employee_comission) VALUES
+	(1, TRUE, 0.0),
+    (2, TRUE, 0.0);
+    
