@@ -172,6 +172,7 @@ CREATE TABLE tbl_client(
     client_state CHAR(2),
     client_number INT,
     client_complement VARCHAR(50),
+    client_observations VARCHAR(1000),
     client_creation_date_time DATETIME DEFAULT NOW() NOT NULL,
     PRIMARY KEY (client_id),
     FOREIGN KEY (client_id) REFERENCES tbl_person(person_id)
@@ -294,4 +295,5 @@ INSERT INTO tbl_user (user_id, user_type, user_mail, user_phone_num, user_hash_p
 INSERT INTO tbl_employee (employee_id, employee_active, employee_comission) VALUES
 	(1, TRUE, 0.0),
     (2, TRUE, 0.0);
-    
+
+ALTER TABLE tbl_client ADD COLUMN client_observations VARCHAR(1000) AFTER client_complement;

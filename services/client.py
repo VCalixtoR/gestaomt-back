@@ -48,7 +48,7 @@ def getClientFromDB(clientId):
 
   clientQuery = dbGetSingle(
     ' SELECT client_id, person_name AS client_name, person_cpf AS client_cpf, person_birth_date AS client_birth_date, person_gender AS client_gender, '
-    ' client_cep, client_adress, client_city, client_neighborhood, client_state, client_number, client_complement, '
+    ' client_cep, client_adress, client_city, client_neighborhood, client_state, client_number, client_complement, client_observations, '
     ' client_contact_ids, client_contact_types, client_contact_values, '
     ' client_children_ids, client_children_names, client_children_birth_dates, client_children_product_size_ids, client_children_product_size_names '
     '   FROM tbl_person AS p JOIN tbl_client AS c ON p.person_id = c.client_id '
@@ -115,6 +115,7 @@ class ClientApi(Resource):
     argsParser.add_argument('client_complement', location='json', type=str, help='Client complement')
     argsParser.add_argument('client_contacts', location='json',  type=list, help='Client contacts json structure')
     argsParser.add_argument('client_children', location='json', type=list, help='Client children json structure')
+    argsParser.add_argument('client_observations', location='json', type=str, help='Client observations')
     args = argsParser.parse_args()
     
     if(args['Authorization']):
@@ -163,10 +164,10 @@ class ClientApi(Resource):
       # inserts client
       dbExecute(
         ' INSERT INTO tbl_client (client_id, client_cep, client_adress, client_city, ' 
-        ' client_neighborhood, client_state, client_number, client_complement) VALUES '
-        ' (%s, %s, %s, %s, %s, %s, %s, %s); ',
+        ' client_neighborhood, client_state, client_number, client_complement, client_observations) VALUES '
+        ' (%s, %s, %s, %s, %s, %s, %s, %s, %s); ',
         [personIdQuery['client_id'], args['client_cep'], args['client_adress'], args['client_city'], 
-        args['client_neighborhood'], args['client_state'], args['client_number'], args['client_complement']], True, dbObjectIns)
+        args['client_neighborhood'], args['client_state'], args['client_number'], args['client_complement'], args['client_observations']], True, dbObjectIns)
       
       # inserts client contacts
       if args.get('client_contacts'):
@@ -232,6 +233,7 @@ class ClientApi(Resource):
     argsParser.add_argument('client_complement', location='json', type=str, help='Client complement')
     argsParser.add_argument('client_contacts', location='json', type=list, help='Client contacts json structure')
     argsParser.add_argument('client_children', location='json', type=list, help='Client children json structure')
+    argsParser.add_argument('client_observations', location='json', type=str, help='Client observations')
     args = argsParser.parse_args()
 
     isValid, returnMessage = isAuthTokenValid(args)
@@ -295,7 +297,8 @@ class ClientApi(Resource):
         '   client_neighborhood = %s, '
         '   client_state = %s, '
         '   client_number = %s, '
-        '   client_complement = %s '
+        '   client_complement = %s, '
+        '   client_observations = %s '
         '   WHERE client_id = %s; ',
         [
           client['client_cep'] if not args.get('client_cep') else args['client_cep'],
@@ -305,6 +308,7 @@ class ClientApi(Resource):
           client['client_state'] if not args.get('client_state') else args['client_state'],
           client['client_number'] if not args.get('client_number') else args['client_number'],
           client['client_complement'] if not args.get('client_complement') else args['client_complement'],
+          client['client_observations'] if not args.get('client_observations') else args['client_observations'],
           client['client_id']
         ], True, dbObjectIns)
 
