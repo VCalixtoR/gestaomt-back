@@ -177,7 +177,9 @@ class SaleApi(Resource):
     # sale
     saleQuery = dbGetSingle(
       ' SELECT * '
-	    '   FROM tbl_sale s ' 
+	    '   FROM tbl_sale s '
+      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
+      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
       '   WHERE s.sale_id = %s; ',
       [(args['sale_id'])])
     
@@ -277,12 +279,15 @@ class SalesApi(Resource):
     sqlScrypt = (
       ' SELECT s.sale_id, s.sale_status, s.sale_total_discount_percentage, s.sale_creation_date_time, s.sale_total_value, '
       ' p_client.person_name AS sale_client_name, '
-      ' p_employee.person_name AS sale_employee_name '
+      ' p_employee.person_name AS sale_employee_name, '
+      ' pm.payment_method_name, pmi.payment_method_Installment_number '
       '   FROM tbl_sale s '
       '   JOIN tbl_client c ON s.sale_client_id = c.client_id '
       '   JOIN tbl_person p_client ON c.client_id = p_client.person_id '
       '   JOIN tbl_employee e ON s.sale_employee_id = e.employee_id '
       '   JOIN tbl_person p_employee ON e.employee_id = p_employee.person_id '
+      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
+      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
       + geralFilterScrypt)
     
     sqlScryptNoCount = (
