@@ -67,6 +67,7 @@ CREATE TABLE tbl_product(
 	product_id INT NOT NULL AUTO_INCREMENT,
     product_code VARCHAR(20) NOT NULL,
     product_name VARCHAR(50) NOT NULL,
+    product_observations VARCHAR(1000),
     is_product_immutable BOOL DEFAULT FALSE NOT NULL,
     is_product_active BOOL DEFAULT TRUE NOT NULL,
     product_creation_date_time DATETIME DEFAULT NOW() NOT NULL,
@@ -297,3 +298,4 @@ INSERT INTO tbl_employee (employee_id, employee_active, employee_comission) VALU
     (2, TRUE, 0.0);
 
 ALTER TABLE tbl_client ADD COLUMN client_observations VARCHAR(1000) AFTER client_complement;
+ALTER TABLE tbl_product ADD COLUMN product_observations VARCHAR(1000) AFTER product_name;

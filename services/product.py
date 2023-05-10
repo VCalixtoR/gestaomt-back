@@ -16,6 +16,7 @@ class ProductApi(Resource):
     argsParser.add_argument('product_collection_ids', location='json', type=list, help='product list of assigned collections ids')
     argsParser.add_argument('product_type_ids', location='json', type=list, help='product list of assigned types')
     argsParser.add_argument('customized_products', location='json', type=list, help='product variations list, required', required=True)
+    argsParser.add_argument('product_observations', location='json', type=str, help='product observations')
     args = argsParser.parse_args()
 
     isValid, returnMessage = isAuthTokenValid(args)
@@ -64,8 +65,8 @@ class ProductApi(Resource):
     try:
       # inserts product
       dbExecute(
-        ' INSERT INTO tbl_product (product_code, product_name) VALUES (%s, %s) ',
-        [args['product_code'], args['product_name']], True, dbObjectIns)
+        ' INSERT INTO tbl_product (product_code, product_name, product_observations) VALUES (%s, %s, %s) ',
+        [args['product_code'], args['product_name'], args['product_observations']], True, dbObjectIns)
       
       productQuery = dbGetSingle(
         " SELECT product_id FROM tbl_product WHERE product_code = %s AND is_product_active = TRUE; ",
@@ -126,7 +127,7 @@ class ProductApi(Resource):
 
     # product
     productQuery = dbGetSingle(
-      ' SELECT product_id, product_code, product_name, is_product_immutable, is_product_active, product_creation_date_time '
+      ' SELECT product_id, product_code, product_name, product_observations, is_product_immutable, is_product_active, product_creation_date_time '
 	    '   FROM tbl_product p '
       '   WHERE p.product_code = %s AND p.is_product_active = TRUE; ',
       [(args['product_code'])])
@@ -185,6 +186,7 @@ class ProductApi(Resource):
     argsParser.add_argument('product_collection_ids', location='json', type=list, help='product list of assigned collections ids')
     argsParser.add_argument('product_type_ids', location='json', type=list, help='product list of assigned types')
     argsParser.add_argument('customized_products', location='json', type=list, help='product variations list, required', required=True)
+    argsParser.add_argument('product_observations', location='json', type=str, help='product observations')
     args = argsParser.parse_args()
 
     isValid, returnMessage = isAuthTokenValid(args)
@@ -296,8 +298,8 @@ class ProductApi(Resource):
 
         # inserts new product and get the new product id to use in customized products updates later
         dbExecute(
-          ' INSERT INTO tbl_product (product_code, product_name) VALUES (%s, %s) ',
-          [args['product_code'], args['product_name']], True, dbObjectIns)
+          ' INSERT INTO tbl_product (product_code, product_name, product_observations) VALUES (%s, %s, %s) ',
+          [args['product_code'], args['product_name'], args['product_observations']], True, dbObjectIns)
         
         productId = dbGetSingle(
           " SELECT product_id FROM tbl_product WHERE product_code = %s AND product_name = %s AND is_product_active = TRUE; ",
@@ -330,9 +332,10 @@ class ProductApi(Resource):
           dbExecute(
             ' UPDATE tbl_product SET '
             '   product_code = %s, '
-            '   product_name = %s '
+            '   product_name = %s, '
+            '   product_observations = %s '
             '   WHERE product_id = %s; ',
-            [args['product_code'], args['product_name'], productId], True, dbObjectIns)
+            [args['product_code'], args['product_name'], args['product_observations'], productId], True, dbObjectIns)
 
         # product collections
         if (args.get('product_collection_ids') is not None):
