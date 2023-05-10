@@ -202,13 +202,13 @@ class SaleApi(Resource):
       ' SELECT DISTINCT p.product_id, p.product_code, p.product_name, cp.customized_product_id, '
       ' shp.sale_has_product_price, shp.sale_has_product_quantity, '
       ' pc.product_color_name, po.product_other_name, ps.product_size_name '
-	    '   FROM tbl_sale s '
+      '   FROM tbl_sale s '
       '   JOIN tbl_sale_has_product shp ON s.sale_id = shp.sale_id '
       '   JOIN tbl_product p ON shp.product_id = p.product_id '
       '   JOIN tbl_customized_product cp ON p.product_id = cp.product_id '
-      '   JOIN tbl_product_color pc ON cp.product_color_id = pc.product_color_id '
-      '   JOIN tbl_product_other po ON cp.product_other_id = po.product_other_id '
       '   JOIN tbl_product_size ps ON cp.product_size_id = ps.product_size_id '
+      '   LEFT JOIN tbl_product_color pc ON cp.product_color_id = pc.product_color_id '
+      '   LEFT JOIN tbl_product_other po ON cp.product_other_id = po.product_other_id '
       '   WHERE s.sale_id = %s AND shp.customized_product_id = cp.customized_product_id '
       '   ORDER BY product_code; ',
       [(args['sale_id'])])
