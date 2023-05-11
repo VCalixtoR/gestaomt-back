@@ -324,7 +324,7 @@ class SaleInfoApi(Resource):
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
     
     query = dbGetSingle(
-      ' SELECT AUTO_INCREMENT AS last_sale_id FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s; ',
+      ' SELECT AUTO_INCREMENT AS next_sale_id FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s; ',
       [os.getenv('SQL_SCHEMA'), 'tbl_sale'])
     
     query['payment_methods'] = dbGetAll(

@@ -173,13 +173,13 @@ class ConditionalApi(Resource):
       ' SELECT DISTINCT p.product_id, p.product_code, p.product_name, cp.customized_product_id, '
       ' chp.conditional_has_product_quantity, '
       ' pc.product_color_name, po.product_other_name, ps.product_size_name '
-	    '   FROM tbl_conditional c '
+      '   FROM tbl_conditional c '
       '   JOIN tbl_conditional_has_product chp ON c.conditional_id = chp.conditional_id '
       '   JOIN tbl_product p ON chp.product_id = p.product_id '
       '   JOIN tbl_customized_product cp ON p.product_id = cp.product_id '
-      '   JOIN tbl_product_color pc ON cp.product_color_id = pc.product_color_id '
-      '   JOIN tbl_product_other po ON cp.product_other_id = po.product_other_id '
       '   JOIN tbl_product_size ps ON cp.product_size_id = ps.product_size_id '
+      '   LEFT JOIN tbl_product_color pc ON cp.product_color_id = pc.product_color_id '
+      '   LEFT JOIN tbl_product_other po ON cp.product_other_id = po.product_other_id '
       '   WHERE c.conditional_id = %s AND chp.customized_product_id = cp.customized_product_id '
       '   ORDER BY p.product_code; ',
       [(args['conditional_id'])])
@@ -273,3 +273,21 @@ class ConditionalsApi(Resource):
       conditionalRow['conditional_creation_date_time'] = str(conditionalRow['conditional_creation_date_time'])
     
     return { 'count': countConditionals['countc'], 'conditionals': conditionalsQuery }, 200
+
+class ConditionalInfoApi(Resource):
+    
+  def get(self):
+      
+    argsParser = reqparse.RequestParser()
+    argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
+    args = argsParser.parse_args()
+    
+    isValid, returnMessage = isAuthTokenValid(args)
+    if not isValid:
+      abort(401, 'Autenticação com o token falhou: ' + returnMessage)
+    
+    query = dbGetSingle(
+      ' SELECT AUTO_INCREMENT AS next_conditional_id FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s; ',
+      [os.getenv('SQL_SCHEMA'), 'tbl_conditional'])
+    
+    return query, 200
