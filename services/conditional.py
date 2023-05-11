@@ -189,16 +189,21 @@ class ConditionalApi(Resource):
     
     return conditionalQuery, 200
   
-  def delete(self):
+  # patch to change conditional status
+  def patch(self):
 
     argsParser = reqparse.RequestParser()
     argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
     argsParser.add_argument('conditional_id', location='json', type=int, help='conditional id, required', required=True)
+    argsParser.add_argument('conditional_status', location='json', type=str, help='conditional status, required', required=True)
     args = argsParser.parse_args()
 
     isValid, returnMessage = isAuthTokenValid(args)
     if not isValid:
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
+
+    if args['conditional_status'] not in ['Pendente', 'Devolvido', 'Cancelado']:
+      return 'Status inválido', 422
 
     # conditional is never deleted, but it status changes to canceled
     conditionalQuery = dbGetSingle(
@@ -208,9 +213,12 @@ class ConditionalApi(Resource):
       [(args['conditional_id'])])
     
     if conditionalQuery['conditional_status'] == 'Cancelado':
-      return 'A condicional já está cancelada', 401
+      return 'A condicional está cancelada e não pode ser alterada', 401
     
-    dbExecute(' UPDATE tbl_conditional SET conditional_status = \'Cancelado\' WHERE conditional_id = %s; ', [(args['conditional_id'])])
+    if conditionalQuery['conditional_status'] == args['conditional_status']:
+      return {}, 204
+
+    dbExecute(' UPDATE tbl_conditional SET conditional_status = %s WHERE conditional_id = %s; ', [args['conditional_status'], args['conditional_id']])
     
     return {}, 204
 
