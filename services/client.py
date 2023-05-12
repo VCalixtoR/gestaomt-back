@@ -48,7 +48,7 @@ def getClientFromDB(clientId):
 
   clientQuery = dbGetSingle(
     ' SELECT client_id, person_name AS client_name, person_cpf AS client_cpf, person_birth_date AS client_birth_date, person_gender AS client_gender, '
-    ' client_cep, client_adress, client_city, client_neighborhood, client_state, client_number, client_complement, client_observations, '
+    ' client_cep, client_adress, client_city, client_neighborhood, client_state, client_number, client_complement, client_classification, client_observations, '
     ' client_contact_ids, client_contact_types, client_contact_values, '
     ' client_children_ids, client_children_names, client_children_birth_dates, client_children_product_size_ids, client_children_product_size_names '
     '   FROM tbl_person AS p JOIN tbl_client AS c ON p.person_id = c.client_id '
@@ -115,6 +115,7 @@ class ClientApi(Resource):
     argsParser.add_argument('client_complement', location='json', type=str, help='Client complement')
     argsParser.add_argument('client_contacts', location='json',  type=list, help='Client contacts json structure')
     argsParser.add_argument('client_children', location='json', type=list, help='Client children json structure')
+    argsParser.add_argument('client_classification', location='json', type=str, help='Client classification enum')
     argsParser.add_argument('client_observations', location='json', type=str, help='Client observations')
     args = argsParser.parse_args()
     
@@ -147,6 +148,10 @@ class ClientApi(Resource):
           return 'Uma das crianças associadas não possui o nome', 422
         if not children.get('children_product_size_id'):
           return 'Uma das crianças associadas não possui o tamanho de produtos', 422
+    
+    # verify classification
+    if args.get('client_classification') and args['client_classification'] not in ['Normal', 'Boa', 'Excelente']:
+      return 'Classificação inválida', 422
 
     dbObjectIns = startGetDbObject()
     try:
@@ -164,10 +169,11 @@ class ClientApi(Resource):
       # inserts client
       dbExecute(
         ' INSERT INTO tbl_client (client_id, client_cep, client_adress, client_city, ' 
-        ' client_neighborhood, client_state, client_number, client_complement, client_observations) VALUES '
-        ' (%s, %s, %s, %s, %s, %s, %s, %s, %s); ',
+        ' client_neighborhood, client_state, client_number, client_complement, client_classification, client_observations) VALUES '
+        ' (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s); ',
         [personIdQuery['client_id'], args['client_cep'], args['client_adress'], args['client_city'], 
-        args['client_neighborhood'], args['client_state'], args['client_number'], args['client_complement'], args['client_observations']], True, dbObjectIns)
+        args['client_neighborhood'], args['client_state'], args['client_number'], args['client_complement'], 
+        args['client_classification'], args['client_observations']], True, dbObjectIns)
       
       # inserts client contacts
       if args.get('client_contacts'):
@@ -233,6 +239,7 @@ class ClientApi(Resource):
     argsParser.add_argument('client_complement', location='json', type=str, help='Client complement')
     argsParser.add_argument('client_contacts', location='json', type=list, help='Client contacts json structure')
     argsParser.add_argument('client_children', location='json', type=list, help='Client children json structure')
+    argsParser.add_argument('client_classification', location='json', type=str, help='Client classification enum')
     argsParser.add_argument('client_observations', location='json', type=str, help='Client observations')
     args = argsParser.parse_args()
 
@@ -269,6 +276,10 @@ class ClientApi(Resource):
           return 'Uma das crianças associadas não possui o nome', 422
         if not children.get('children_product_size_id'):
           return 'Uma das crianças associadas não possui o tamanho de produtos', 422
+    
+    # verify classification
+    if args.get('client_classification') and args['client_classification'] not in ['Normal', 'Boa', 'Excelente']:
+      return 'Classificação inválida', 422
 
     dbObjectIns = startGetDbObject()
     try:
@@ -298,6 +309,7 @@ class ClientApi(Resource):
         '   client_state = %s, '
         '   client_number = %s, '
         '   client_complement = %s, '
+        '   client_classification = %s, '
         '   client_observations = %s '
         '   WHERE client_id = %s; ',
         [
@@ -308,6 +320,7 @@ class ClientApi(Resource):
           client['client_state'] if not args.get('client_state') else args['client_state'],
           client['client_number'] if not args.get('client_number') else args['client_number'],
           client['client_complement'] if not args.get('client_complement') else args['client_complement'],
+          client['client_classification'] if not args.get('client_classification') else args['client_classification'],
           client['client_observations'] if not args.get('client_observations') else args['client_observations'],
           client['client_id']
         ], True, dbObjectIns)
@@ -353,6 +366,7 @@ class ClientsApi(Resource):
     argsParser.add_argument('limit', location='args', type=int, help='number of rows returned')
     argsParser.add_argument('offset', location='args', type=int, help='start row from db')
     argsParser.add_argument('client_name', location='args', type=str, help='client name')
+    argsParser.add_argument('client_classification', location='args', type=str, help='Client classification enum')
     argsParser.add_argument('children_name', location='args', type=str, help='client children name')
     argsParser.add_argument('children_birth_month_day_start', location='args', type=str, help='start client children birth day and month')
     argsParser.add_argument('children_birth_month_day_end', location='args', type=str, help='end client children birth day and month')
@@ -394,6 +408,7 @@ class ClientsApi(Resource):
     geralFilterScrypt, geralFilterScryptNoLimit, geralFilterArgs, geralFilterArgsNoLimit =  dbGetSqlFilterScrypt(
       [
         {'filterCollum':'p.person_name', 'filterOperator':'LIKE%_%', 'filterValue':args.get('client_name')},
+        {'filterCollum':'c.client_classification', 'filterOperator':'=', 'filterValue':args.get('client_classification')},
         {'filterCollum':'last_sale_date', 'filterOperator':'>=', 'filterValue':args.get('last_sale_date_start')},
         {'filterCollum':'last_sale_date', 'filterOperator':'<=', 'filterValue':args.get('last_sale_date_end')}
       ],
@@ -403,7 +418,7 @@ class ClientsApi(Resource):
 
     geralSqlScrypt = (
       ' SELECT c.client_id, p.person_name AS client_name, p.person_cpf AS client_cpf, p.person_birth_date AS client_birth_date, p.person_gender AS client_gender, '
-      ' c.client_cep, c.client_adress, c.client_city, c.client_neighborhood, c.client_state, c.client_number, c.client_complement, '
+      ' c.client_cep, c.client_adress, c.client_city, c.client_neighborhood, c.client_state, c.client_number, c.client_complement, c.client_classification, c.client_observations, '
       ' client_contact_ids, client_contact_types, client_contact_values, '
       ' client_children_ids, client_children_names, client_children_birth_dates, client_children_product_size_ids, client_children_product_size_names, '
       ' csale.last_sale_date, stmp.sale_total_value AS last_sale_total_value '

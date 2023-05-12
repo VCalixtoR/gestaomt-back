@@ -173,6 +173,7 @@ CREATE TABLE tbl_client(
     client_state CHAR(2),
     client_number INT,
     client_complement VARCHAR(50),
+    client_classification ENUM('Normal', 'Boa', 'Excelente') DEFAULT 'Normal' NOT NULL,
     client_observations VARCHAR(1000),
     client_creation_date_time DATETIME DEFAULT NOW() NOT NULL,
     PRIMARY KEY (client_id),
@@ -297,5 +298,8 @@ INSERT INTO tbl_employee (employee_id, employee_active, employee_comission) VALU
 	(1, TRUE, 0.0),
     (2, TRUE, 0.0);
 
-ALTER TABLE tbl_client ADD COLUMN client_observations VARCHAR(1000) AFTER client_complement;
+/* usefull commands
+ALTER TABLE tbl_client ADD COLUMN client_classification ENUM('Normal', 'Boa', 'Excelente') DEFAULT 'Normal' NOT NULL AFTER client_complement;
+ALTER TABLE tbl_client ADD COLUMN client_observations VARCHAR(1000) AFTER client_classification;
 ALTER TABLE tbl_product ADD COLUMN product_observations VARCHAR(1000) AFTER product_name;
+*/
