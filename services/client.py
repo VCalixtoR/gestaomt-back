@@ -366,6 +366,7 @@ class ClientsApi(Resource):
     argsParser.add_argument('limit', location='args', type=int, help='number of rows returned')
     argsParser.add_argument('offset', location='args', type=int, help='start row from db')
     argsParser.add_argument('client_name', location='args', type=str, help='client name')
+    argsParser.add_argument('client_whatsapp', location='args', type=str, help='client whatsapp')
     argsParser.add_argument('client_classification', location='args', type=str, help='Client classification enum')
     argsParser.add_argument('children_name', location='args', type=str, help='client children name')
     argsParser.add_argument('children_birth_month_day_start', location='args', type=str, help='start client children birth day and month')
@@ -404,6 +405,11 @@ class ClientsApi(Resource):
         {'filterCollum':'DATE_FORMAT(children_birth_date, \'%m-%' + 'd\')', 'filterOperator':'>=', 'filterValue':args.get('children_birth_month_day_start')},
         {'filterCollum':'DATE_FORMAT(children_birth_date, \'%m-%' + 'd\')', 'filterOperator':'<=', 'filterValue':args.get('children_birth_month_day_end')}
       ], groupByCollumns='children_client_id', filterEnding='')
+    
+    contactFilterScrypt, contactFilterArgs = dbGetSqlFilterScrypt(
+      [
+        {'filterCollum':'contact_value', 'filterOperator':'LIKE%_%', 'filterValue':args.get('client_whatsapp')}
+      ], groupByCollumns='contact_client_id', filterEnding='')
 
     geralFilterScrypt, geralFilterScryptNoLimit, geralFilterArgs, geralFilterArgsNoLimit =  dbGetSqlFilterScrypt(
       [
@@ -424,12 +430,13 @@ class ClientsApi(Resource):
       ' csale.last_sale_date, stmp.sale_total_value AS last_sale_total_value '
       '   FROM tbl_person p '
       '   JOIN tbl_client c ON p.person_id = c.client_id '
-      '   LEFT JOIN ( '
+      '   JOIN ( '
       '     SELECT contact_client_id, '
       '	      GROUP_CONCAT(contact_id SEPARATOR \',\') AS client_contact_ids, '
       '       GROUP_CONCAT(contact_type SEPARATOR \',\') AS client_contact_types,  '
       '	      GROUP_CONCAT(contact_value SEPARATOR \',\') AS client_contact_values '
-      '	        FROM tbl_client_contact GROUP BY contact_client_id '
+      '	        FROM tbl_client_contact '
+      + contactFilterScrypt +
       '   ) AS ccontact ON c.client_id = ccontact.contact_client_id '
       '   ' + ('LEFT' if leftJoinOnChildren else '') + ' JOIN ( '
       '     SELECT children_client_id, '
@@ -459,7 +466,8 @@ class ClientsApi(Resource):
       '	      GROUP_CONCAT(contact_id SEPARATOR \',\') AS client_contact_ids, '
       '       GROUP_CONCAT(contact_type SEPARATOR \',\') AS client_contact_types,  '
       '	      GROUP_CONCAT(contact_value SEPARATOR \',\') AS client_contact_values '
-      '	        FROM tbl_client_contact GROUP BY contact_client_id '
+      '	        FROM tbl_client_contact '
+      + contactFilterScrypt +
       '   ) AS ccontact ON c.client_id = ccontact.contact_client_id '
       '   ' + ('LEFT' if leftJoinOnChildren else '') + ' JOIN ( '
       '     SELECT children_client_id, '
@@ -480,8 +488,8 @@ class ClientsApi(Resource):
       '   LEFT JOIN tbl_sale stmp ON csale.sale_client_id = stmp.sale_client_id '
       + geralFilterScryptNoLimit)
 
-    clientSqlQuery = dbGetAll(geralSqlScrypt, childrenFilterArgs + geralFilterArgs)
-    countSqlQuery = dbGetSingle(countSqlScrypt, childrenFilterArgs + geralFilterArgsNoLimit)
+    clientSqlQuery = dbGetAll(geralSqlScrypt, childrenFilterArgs + contactFilterArgs + geralFilterArgs)
+    countSqlQuery = dbGetSingle(countSqlScrypt, childrenFilterArgs + contactFilterArgs + geralFilterArgsNoLimit)
 
     if not clientSqlQuery or not countSqlQuery:
       return { 'count_clients': 0, 'clients': [] }, 200
