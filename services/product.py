@@ -326,9 +326,12 @@ class ProductApi(Resource):
         
       # else removes or updates its collections or types if necessary
       else:
-        
+
         # code or name - in this case, product is not immutable
-        if (productQuery['product_code'] != args['product_code'] or productQuery['product_name'] != args['product_name']):
+        if (productQuery['product_code'] != args['product_code'] or 
+          productQuery['product_name'] != args['product_name'] or
+          productQuery['product_observations'] != args['product_observations']):
+
           dbExecute(
             ' UPDATE tbl_product SET '
             '   product_code = %s, '
