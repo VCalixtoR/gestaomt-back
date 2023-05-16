@@ -165,7 +165,8 @@ class ProductApi(Resource):
       '   JOIN tbl_product_size pz ON cp.product_size_id = pz.product_size_id '
       '   LEFT JOIN tbl_product_color pc ON cp.product_color_id = pc.product_color_id '
       '   LEFT JOIN tbl_product_other po ON cp.product_other_id = po.product_other_id '
-      '   WHERE p.product_id = %s; ',
+      '   WHERE cp.is_customized_product_active = TRUE AND p.product_id = %s '
+      '   ORDER BY product_size_name, product_color_name, product_other_name; ',
       [(productQuery['product_id'])])
     
     if not customizedProductsQuery:
@@ -239,7 +240,7 @@ class ProductApi(Resource):
       ' cp.is_customized_product_immutable, cp.is_customized_product_active '
       '   FROM tbl_product p '
       '   JOIN tbl_customized_product cp ON p.product_id = cp.product_id '
-      '   WHERE p.product_id = %s AND cp.is_customized_product_active = TRUE; ',
+      '   WHERE p.product_id = %s; ',
       [(productQuery['product_id'])])
     
     if customizedProductQuery == None:
@@ -295,20 +296,38 @@ class ProductApi(Resource):
           '   is_product_active = FALSE '
           '   WHERE product_id = %s; ',
           [(productId)], True, dbObjectIns)
+        
+        # removes its not immutable custom products, and sets customizedProductQuery to [] to avoid incorrect reuse later
+        for customProduct in customizedProductQuery:
+          if not customProduct['is_customized_product_immutable']:
+            dbExecute(
+              ' DELETE FROM tbl_customized_product WHERE customized_product_id = %s; ',
+              [(customProduct['customized_product_id'])], True, dbObjectIns)
+        customizedProductQuery = []
+
+        # removes its collections
+        dbExecute(
+          ' DELETE FROM tbl_product_has_collection WHERE product_id = %s; ',
+          (productId,), True, dbObjectIns)
+
+        # removes its types
+        dbExecute(
+          ' DELETE FROM tbl_product_has_type WHERE product_id = %s; ',
+          (productId,), True, dbObjectIns)
 
         # inserts new product and get the new product id to use in customized products updates later
         dbExecute(
           ' INSERT INTO tbl_product (product_code, product_name, product_observations) VALUES (%s, %s, %s) ',
           [args['product_code'], args['product_name'], args['product_observations']], True, dbObjectIns)
         
-        productId = dbGetSingle(
+        productIdQuery = dbGetSingle(
           " SELECT product_id FROM tbl_product WHERE product_code = %s AND product_name = %s AND is_product_active = TRUE; ",
           [args['product_code'], args['product_name']], True, dbObjectIns)
       
-        if not productId:
+        if not productIdQuery:
           raise Exception('Exception empty select after update and insert from tbl_product patch')
         
-        productId = productId['product_id']
+        productId = productIdQuery['product_id']
 
         # inserts has collections
         if args.get('product_collection_ids') is not None:
@@ -371,7 +390,6 @@ class ProductApi(Resource):
                 [productId, argsProductTypeId], True, dbObjectIns)
 
       ### Customized Products ###
-
       for dbCustomizedProduct in customizedProductQuery:
         productFound = False
 
@@ -389,7 +407,8 @@ class ProductApi(Resource):
             ' UPDATE tbl_customized_product SET '
             '   product_id = %s, '
             '   customized_product_price = %s, '
-            '   customized_product_quantity = %s '
+            '   customized_product_quantity = %s, '
+            '   is_customized_product_active = TRUE '
             '   WHERE customized_product_id = %s; ',
             [ productId,
               argsCustomizedProduct['product_price'],

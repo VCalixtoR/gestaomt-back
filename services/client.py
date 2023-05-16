@@ -150,7 +150,7 @@ class ClientApi(Resource):
           return 'Uma das crianças associadas não possui o tamanho de produtos', 422
     
     # verify classification
-    if args.get('client_classification') and args['client_classification'] not in ['Normal', 'Boa', 'Excelente']:
+    if args.get('client_classification') and args['client_classification'] not in ['Ruim', 'Boa', 'Excelente']:
       return 'Classificação inválida', 422
 
     dbObjectIns = startGetDbObject()
@@ -278,7 +278,7 @@ class ClientApi(Resource):
           return 'Uma das crianças associadas não possui o tamanho de produtos', 422
     
     # verify classification
-    if args.get('client_classification') and args['client_classification'] not in ['Normal', 'Boa', 'Excelente']:
+    if args.get('client_classification') and args['client_classification'] not in ['Ruim', 'Boa', 'Excelente']:
       return 'Classificação inválida', 422
 
     dbObjectIns = startGetDbObject()
