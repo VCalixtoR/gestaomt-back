@@ -56,7 +56,7 @@ class SaleApi(Resource):
     # test sale total discount percentage
     if args['sale_total_discount_percentage'] < 0.0:
       return 'O desconto na venda não pode ser menor que 0', 422
-    if args['sale_total_discount_percentage'] >= 100.0:
+    if args['sale_total_discount_percentage'] >= 1.0:
       return 'O desconto na venda não pode ser maior ou igual a 100', 422
  
     # test sale products
@@ -218,6 +218,7 @@ class SaleApi(Resource):
     
     return saleQuery, 200
   
+  # sale is never deleted, but it status changes to canceled
   def delete(self):
 
     argsParser = reqparse.RequestParser()
@@ -229,7 +230,6 @@ class SaleApi(Resource):
     if not isValid:
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
 
-    # sale is never deleted, but it status changes to canceled
     saleQuery = dbGetSingle(
       ' SELECT * '
 	    '   FROM tbl_sale s ' 
@@ -239,7 +239,40 @@ class SaleApi(Resource):
     if saleQuery['sale_status'] == 'Cancelado':
       return 'A venda já está cancelada', 401
     
-    dbExecute(' UPDATE tbl_sale SET sale_status = \'Cancelado\' WHERE sale_id = %s; ', [(args['sale_id'])])
+    # products and customized products
+    customSaleProducts = dbGetAll(
+      ' SELECT DISTINCT shp.product_id, shp.customized_product_id, shp.sale_has_product_quantity '
+      '   FROM tbl_sale s '
+      '   JOIN tbl_sale_has_product shp ON s.sale_id = shp.sale_id '
+      '   WHERE s.sale_id = %s; ',
+      [(args['sale_id'])])
+    
+    dbObjectIns = startGetDbObject()
+    try:
+      for customProduct in customSaleProducts:
+        customDbProduct = dbGetSingle(
+          ' SELECT * '
+          '   FROM tbl_customized_product cp ' 
+          '   WHERE cp.customized_product_id = %s; ',
+          (customProduct['customized_product_id'],),True, dbObjectIns
+        )
+        if not customDbProduct:
+          raise Exception('Customized product not found while adding quantity to cancel sale')
+        
+        dbExecute(
+          ' UPDATE tbl_customized_product SET '
+          '   customized_product_quantity = %s '
+          '   WHERE customized_product_id = %s; ',
+          [ customDbProduct['customized_product_quantity'] + customProduct['sale_has_product_quantity'], customProduct['customized_product_id']]
+          , True, dbObjectIns)
+
+      dbExecute(' UPDATE tbl_sale SET sale_status = \'Cancelado\' WHERE sale_id = %s; ', [(args['sale_id'])], True, dbObjectIns)
+
+    except Exception as e:
+      dbRollback(dbObjectIns)
+      traceback.print_exc()
+      return 'Erro ao cancelar a venda ' + str(e), 500
+    dbCommit(dbObjectIns)
     
     return {}, 204
 

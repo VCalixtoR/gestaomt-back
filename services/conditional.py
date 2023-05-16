@@ -214,11 +214,49 @@ class ConditionalApi(Resource):
     
     if conditionalQuery['conditional_status'] == 'Cancelado':
       return 'A condicional está cancelada e não pode ser alterada', 401
-    
+    if conditionalQuery['conditional_status'] == 'Devolvido':
+      return 'A condicional está Devolvida e não pode ser alterada', 401
     if conditionalQuery['conditional_status'] == args['conditional_status']:
       return {}, 204
+    
+    # products and customized products
+    customConditionalProducts = dbGetAll(
+      ' SELECT DISTINCT chp.product_id, chp.customized_product_id, chp.conditional_has_product_quantity '
+      '   FROM tbl_conditional c '
+      '   JOIN tbl_conditional_has_product chp ON c.conditional_id = chp.conditional_id '
+      '   WHERE c.conditional_id = %s; ',
+      [(args['conditional_id'])])
+    
+    dbObjectIns = startGetDbObject()
+    try:
+      for customProduct in customConditionalProducts:
+        customDbProduct = dbGetSingle(
+          ' SELECT * '
+          '   FROM tbl_customized_product cp ' 
+          '   WHERE cp.customized_product_id = %s; ',
+          (customProduct['customized_product_id'],),True, dbObjectIns
+        )
+        if not customDbProduct:
+          raise Exception('Customized product not found while adding quantity to change conditional status')
+        print(customProduct)
+        print(customDbProduct)
+        print(customDbProduct['customized_product_quantity'] + customProduct['conditional_has_product_quantity'])
+        
+        dbExecute(
+          ' UPDATE tbl_customized_product SET '
+          '   customized_product_quantity = %s '
+          '   WHERE customized_product_id = %s; ',
+          [ customDbProduct['customized_product_quantity'] + customProduct['conditional_has_product_quantity'], customProduct['customized_product_id']]
+          , True, dbObjectIns)
 
-    dbExecute(' UPDATE tbl_conditional SET conditional_status = %s WHERE conditional_id = %s; ', [args['conditional_status'], args['conditional_id']])
+      dbExecute(' UPDATE tbl_conditional SET conditional_status = %s WHERE conditional_id = %s; ', 
+        [args['conditional_status'], args['conditional_id']], True, dbObjectIns)
+
+    except Exception as e:
+      dbRollback(dbObjectIns)
+      traceback.print_exc()
+      return 'Erro ao cancelar a condicional ' + str(e), 500
+    dbCommit(dbObjectIns)
     
     return {}, 204
 
