@@ -111,8 +111,8 @@ class SaleApi(Resource):
         calculatedSaleValue += customProductQuery['customized_product_price'] * customizedProduct['customized_product_sale_quantity']
 
     # verifies with only two decimal places to avoid small precision differences between apps
-    if ('{:.2f}'.format(calculatedSaleValue-calculatedSaleValue*args['sale_total_discount_percentage'])) != '{:.2f}'.format(args['sale_total_value']):
-      return 'Preço esperado diferente do preço calculado no sistema', 422
+    #if ('{:.2f}'.format(calculatedSaleValue-calculatedSaleValue*args['sale_total_discount_percentage'])) != '{:.2f}'.format(args['sale_total_value']):
+    #  return 'Preço esperado diferente do preço calculado no sistema', 422
     
     dbObjectIns = startGetDbObject()
     try:
