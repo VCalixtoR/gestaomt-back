@@ -488,8 +488,8 @@ class ClientsApi(Resource):
       '   LEFT JOIN tbl_sale stmp ON csale.sale_client_id = stmp.sale_client_id '
       + geralFilterScryptNoLimit)
 
-    clientSqlQuery = dbGetAll(geralSqlScrypt, childrenFilterArgs + contactFilterArgs + geralFilterArgs)
-    countSqlQuery = dbGetSingle(countSqlScrypt, childrenFilterArgs + contactFilterArgs + geralFilterArgsNoLimit)
+    clientSqlQuery = dbGetAll(geralSqlScrypt, contactFilterArgs + childrenFilterArgs + geralFilterArgs)
+    countSqlQuery = dbGetSingle(countSqlScrypt, contactFilterArgs + childrenFilterArgs + geralFilterArgsNoLimit)
 
     if not clientSqlQuery or not countSqlQuery:
       return { 'count_clients': 0, 'clients': [] }, 200
