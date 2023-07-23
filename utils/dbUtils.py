@@ -187,14 +187,17 @@ def dbGetSqlFilterScrypt(argsObj, groupByCollumns=None, orderByCollumns=None, li
     if args.get('filterValue'):
 
       if 'LIKE' in args['filterOperator']:
+
+        filterScrypt += sqlJunctionClause + args["filterCollum"] + " LIKE %s "
+
         if '%_%' in args['filterOperator']:
-          filterScrypt += sqlJunctionClause + args['filterCollum'] + ' LIKE \'%' + str(args['filterValue']) + '%\' '
+          filterValues.append(f'''%{args["filterValue"]}%''')
         elif '_%' in args['filterOperator']:
-          filterScrypt += sqlJunctionClause + args['filterCollum'] + ' LIKE \'' + str(args['filterValue']) + '%\' '
+          filterValues.append(f'''{args["filterValue"]}%''')
         elif '%_' in args['filterOperator']:
-          filterScrypt += sqlJunctionClause + args['filterCollum'] + ' LIKE \'%' + str(args['filterValue']) + '\' '
+          filterValues.append(f'''%{args["filterValue"]}''')
         else:
-          filterScrypt += sqlJunctionClause + args['filterCollum'] + ' LIKE \'' + str(args['filterValue']) + '\' '
+          filterValues.append(f'''{args["filterValue"]}''')
 
       else:
         filterScrypt += sqlJunctionClause + args['filterCollum'] + ' ' + args['filterOperator'] + ' %s '
