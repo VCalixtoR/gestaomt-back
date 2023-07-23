@@ -172,7 +172,7 @@ def dbGetAll(sqlScrypt, values=None, transactionMode=False, dbObjectIns=None):
 
   return dbObjectIns.dbCursor.fetchall()
 
-def dbGetSqlFilterScrypt(argsObj, groupByCollumns=None, orderByCollumns=None, limitValue=None, offsetValue=None, initialSqlJunctionClause=' WHERE ', filterEnding=';', getFilterWithoutLimits=False):
+def dbGetSqlFilterScrypt(argsObj, groupByCollumns=None, orderByCollumns=None, orderByAsc=True, limitValue=None, offsetValue=None, initialSqlJunctionClause=' WHERE ', filterEnding=';', getFilterWithoutLimits=False):
 
   filterScrypt = ''
   filterScryptNoLimit = None
@@ -214,6 +214,8 @@ def dbGetSqlFilterScrypt(argsObj, groupByCollumns=None, orderByCollumns=None, li
 
   if orderByCollumns:
     filterScrypt += ' ORDER BY ' + orderByCollumns
+    if not orderByAsc:
+      filterScrypt += ' DESC '
   
   if limitValue != None:
     filterScrypt += ' LIMIT %s '

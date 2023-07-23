@@ -268,6 +268,8 @@ class ConditionalsApi(Resource):
     argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
     argsParser.add_argument('limit', location='args', type=int, help='query limit, required', required=True)
     argsParser.add_argument('offset', location='args', type=int, help='query offset, required', required=True)
+    argsParser.add_argument('order_by', location='args', type=str, help='query orderby', required=True)
+    argsParser.add_argument('order_by_asc', location='args', type=str, help='query orderby ascendant', required=True)
     argsParser.add_argument('conditional_id', location='args', type=int, help='conditional id')
     argsParser.add_argument('conditional_client_name', location='args', type=str, help='conditional client name')
     argsParser.add_argument('conditional_status', location='args', type=str, help='conditional status')
@@ -278,6 +280,8 @@ class ConditionalsApi(Resource):
     isValid, returnMessage = isAuthTokenValid(args)
     if not isValid:
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
+    
+    orderByAsc = (args['order_by_asc'] == '1' or args['order_by_asc'].lower() == 'true')
     
     if args.get('conditional_creation_date_time_start'):
       try:
@@ -299,7 +303,7 @@ class ConditionalsApi(Resource):
         {'filterCollum':'cond.conditional_creation_date_time', 'filterOperator':'>=', 'filterValue':args.get('conditional_creation_date_time_start')},
         {'filterCollum':'cond.conditional_creation_date_time', 'filterOperator':'<=', 'filterValue':args.get('conditional_creation_date_time_end')}
       ],
-      orderByCollumns='cond.conditional_id', limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
+      orderByCollumns=args['order_by'], orderByAsc=orderByAsc, limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
     
     sqlScrypt = (
       ' SELECT cond.conditional_id, cond.conditional_status, cond.conditional_creation_date_time, '

@@ -570,6 +570,8 @@ class ProductsApi(Resource):
     argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
     argsParser.add_argument('limit', location='args', type=int, help='query limit, required', required=True)
     argsParser.add_argument('offset', location='args', type=int, help='query offset, required', required=True)
+    argsParser.add_argument('order_by', location='args', type=str, help='query orderby', required=True)
+    argsParser.add_argument('order_by_asc', location='args', type=str, help='query orderby ascendant', required=True)
     argsParser.add_argument('product_code', location='args', type=str, help='product code')
     argsParser.add_argument('product_name', location='args', type=str, help='product name')
     argsParser.add_argument('product_color_id', location='args', type=int, help='product color id')
@@ -586,6 +588,8 @@ class ProductsApi(Resource):
     isValid, returnMessage = isAuthTokenValid(args)
     if not isValid:
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
+    
+    orderByAsc = (args['order_by_asc'] == '1' or args['order_by_asc'].lower() == 'true')
     
     cpFilterScrypt, cpFilterArgs = dbGetSqlFilterScrypt(
       [
@@ -616,7 +620,7 @@ class ProductsApi(Resource):
         {'filterCollum':'pc_names.product_collection_ids', 'filterOperator':'LIKE%_%', 'filterValue':args.get('product_collection_id')},
         {'filterCollum':'pt_names.product_type_ids', 'filterOperator':'LIKE%_%', 'filterValue':args.get('product_type_id')}
       ],
-      groupByCollumns='p.product_id', orderByCollumns='p.product_code', limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
+      groupByCollumns='p.product_id', orderByCollumns=args['order_by'], orderByAsc=orderByAsc, limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
     
     allFilterArgs = cpFilterArgs + phcFilterArgs + phtFilterArgs + geralFilterArgs
     allFilterArgsNoLimit = cpFilterArgs + phcFilterArgs + phtFilterArgs + geralFilterArgsNoLimit

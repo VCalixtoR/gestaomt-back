@@ -365,6 +365,8 @@ class ClientsApi(Resource):
     argsParser.add_argument('only_client_names_cpfs', location='args', type=str)
     argsParser.add_argument('limit', location='args', type=int, help='number of rows returned')
     argsParser.add_argument('offset', location='args', type=int, help='start row from db')
+    argsParser.add_argument('order_by', location='args', type=str, help='query orderby')
+    argsParser.add_argument('order_by_asc', location='args', type=str, help='query orderby ascendant')
     argsParser.add_argument('client_name', location='args', type=str, help='client name')
     argsParser.add_argument('client_whatsapp', location='args', type=str, help='client whatsapp')
     argsParser.add_argument('client_classification', location='args', type=str, help='Client classification enum')
@@ -398,6 +400,11 @@ class ClientsApi(Resource):
       
       if not splitedDM or len(splitedDM) != 2:
         return 'incorrect month_day end', 422
+    
+    if args.get('order_by') == None or args.get('order_by_asc'):
+      return 'invalid order_by or order_by_asc fields', 422
+    
+    orderByAsc = (args['order_by_asc'] == '1' or args['order_by_asc'].lower() == 'true')
 
     childrenFilterScrypt, childrenFilterArgs = dbGetSqlFilterScrypt(
       [
@@ -418,7 +425,7 @@ class ClientsApi(Resource):
         {'filterCollum':'last_sale_date', 'filterOperator':'>=', 'filterValue':args.get('last_sale_date_start')},
         {'filterCollum':'last_sale_date', 'filterOperator':'<=', 'filterValue':args.get('last_sale_date_end')}
       ],
-      orderByCollumns='p.person_name', limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
+      orderByCollumns=args['order_by'], orderByAsc=orderByAsc, limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
 
     leftJoinOnChildren = not args.get('children_name') and not args.get('children_birth_month_day_start') and not args.get('children_birth_month_day_end')
 

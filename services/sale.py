@@ -285,6 +285,8 @@ class SalesApi(Resource):
     argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
     argsParser.add_argument('limit', location='args', type=int, help='query limit, required', required=True)
     argsParser.add_argument('offset', location='args', type=int, help='query offset, required', required=True)
+    argsParser.add_argument('order_by', location='args', type=str, help='query orderby', required=True)
+    argsParser.add_argument('order_by_asc', location='args', type=str, help='query orderby ascendant', required=True)
     argsParser.add_argument('sale_id', location='args', type=int, help='sale id')
     argsParser.add_argument('sale_client_name', location='args', type=str, help='sale client name')
     argsParser.add_argument('sale_status', location='args', type=str, help='sale status')
@@ -297,6 +299,8 @@ class SalesApi(Resource):
     isValid, returnMessage = isAuthTokenValid(args)
     if not isValid:
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
+    
+    orderByAsc = (args['order_by_asc'] == '1' or args['order_by_asc'].lower() == 'true')
     
     if args.get('sale_creation_date_time_start'):
       try:
@@ -320,7 +324,7 @@ class SalesApi(Resource):
         {'filterCollum':'s.sale_total_value', 'filterOperator':'>=', 'filterValue':args.get('sale_total_value_start')},
         {'filterCollum':'s.sale_total_value', 'filterOperator':'<=', 'filterValue':args.get('sale_total_value_end')}
       ],
-      orderByCollumns='s.sale_id', limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
+      orderByCollumns=args['order_by'], orderByAsc=orderByAsc, limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
     
     sqlScrypt = (
       ' SELECT s.sale_id, s.sale_status, s.sale_total_discount_percentage, s.sale_creation_date_time, s.sale_total_value, '
