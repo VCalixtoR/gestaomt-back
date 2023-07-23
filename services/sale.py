@@ -1,3 +1,4 @@
+import datetime
 from flask import Flask, abort
 from flask_restful import Resource, Api, reqparse
 import traceback
@@ -296,6 +297,18 @@ class SalesApi(Resource):
     isValid, returnMessage = isAuthTokenValid(args)
     if not isValid:
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
+    
+    if args.get('sale_creation_date_time_start'):
+      try:
+        datetime.datetime.strptime(args['sale_creation_date_time_start'], '%Y-%m-%dT%H:%M')
+      except ValueError as err:
+        return 'Data e hora de início inválida', 422
+    
+    if args.get('sale_creation_date_time_end'):
+      try:
+        datetime.datetime.strptime(args['sale_creation_date_time_end'], '%Y-%m-%dT%H:%M')
+      except ValueError as err:
+        return 'Data e hora de fim inválida', 422
 
     geralFilterScrypt, geralFilterScryptNoLimit, geralFilterArgs, geralFilterArgsNoLimit =  dbGetSqlFilterScrypt(
       [
