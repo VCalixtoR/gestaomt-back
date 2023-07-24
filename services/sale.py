@@ -19,11 +19,14 @@ class SaleApi(Resource):
     argsParser.add_argument('sale_has_products', location='json', type=list, help='product and its variations list, required', required=True)
     argsParser.add_argument('sale_total_discount_percentage', location='json', type=float, help='sale total discount percentage float, required and can be 0.0', required=True)
     argsParser.add_argument('sale_total_value', location='json', type=float, help='sale total value float, required', required=True)
+    argsParser.add_argument('force_product_addition', location='json', type=str, help='if will add missing products in sale creation, required', required=True)
     args = argsParser.parse_args()
 
     isValid, returnMessage = isAuthTokenValid(args)
     if not isValid:
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
+
+    forceProductAddition = args['force_product_addition'].lower() in ['true', '1']
 
     # test client
     clientQuery = dbGetSingle(
@@ -102,7 +105,7 @@ class SaleApi(Resource):
           return 'Um dos produtos customizaveis associados não foi encontrado no sistema', 422
         if not customProductQuery['is_customized_product_active']:
           return 'Um dos produtos customizaveis associados está inativo', 422
-        if customizedProduct['customized_product_sale_quantity'] > customProductQuery['customized_product_quantity']:
+        if not forceProductAddition and customizedProduct['customized_product_sale_quantity'] > customProductQuery['customized_product_quantity']:
           return 'Um dos produtos customizaveis associados está com quantidade maior de vendas que o estoque disponível', 422
         
         # associates product price and quantity in args to use later
@@ -144,7 +147,7 @@ class SaleApi(Resource):
             '   customized_product_quantity = %s '
             '   WHERE customized_product_id = %s; ',
             [
-              (customizedProduct['customized_product_quantity'] - customizedProduct['customized_product_sale_quantity']), 
+              max(customizedProduct['customized_product_quantity'] - customizedProduct['customized_product_sale_quantity'], 0), 
               customizedProduct['customized_product_id']
             ], 
             True, dbObjectIns)
