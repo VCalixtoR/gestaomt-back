@@ -15,11 +15,14 @@ class ConditionalApi(Resource):
     argsParser.add_argument('conditional_client_id', location='json', type=int, help='conditional client id, required', required=True)
     argsParser.add_argument('conditional_employee_id', location='json', type=int, help='conditional employee id, required', required=True)
     argsParser.add_argument('conditional_has_products', location='json', type=list, help='products and its variations list, required', required=True)
+    argsParser.add_argument('force_product_addition', location='json', type=str, help='if will add missing products in conditional creation, required', required=True)
     args = argsParser.parse_args()
 
     isValid, returnMessage = isAuthTokenValid(args)
     if not isValid:
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
+
+    forceProductAddition = args['force_product_addition'].lower() in ['true', '1']
 
     # test client
     clientQuery = dbGetSingle(
@@ -82,7 +85,7 @@ class ConditionalApi(Resource):
           return 'Um dos produtos customizaveis associados não foi encontrado no sistema', 422
         if not customProductQuery['is_customized_product_active']:
           return 'Um dos produtos customizaveis associados está inativo', 422
-        if customizedProduct['customized_product_conditional_quantity'] > customProductQuery['customized_product_quantity']:
+        if not forceProductAddition and customizedProduct['customized_product_conditional_quantity'] > customProductQuery['customized_product_quantity']:
           return 'Um dos produtos customizaveis associados está com quantidade maior que o estoque disponível', 422
         
         # associates product quantity in args to use later
@@ -116,7 +119,7 @@ class ConditionalApi(Resource):
             '   customized_product_quantity = %s '
             '   WHERE customized_product_id = %s; ',
             [
-              (customizedProduct['customized_product_quantity'] - customizedProduct['customized_product_conditional_quantity']), 
+              max(customizedProduct['customized_product_quantity'] - customizedProduct['customized_product_conditional_quantity'], 0),
               customizedProduct['customized_product_id']
             ], 
             True, dbObjectIns)
