@@ -434,7 +434,7 @@ class ClientsApi(Resource):
       ' c.client_cep, c.client_adress, c.client_city, c.client_neighborhood, c.client_state, c.client_number, c.client_complement, c.client_classification, c.client_observations, '
       ' client_contact_ids, client_contact_types, client_contact_values, '
       ' client_children_ids, client_children_names, client_children_birth_dates, client_children_product_size_ids, client_children_product_size_names, '
-      ' csale.last_sale_date, csale.sale_total_value AS last_sale_total_value '
+      ' csale.last_sale_date, csale.last_sale_total_value '
       '   FROM tbl_person p '
       '   JOIN tbl_client c ON p.person_id = c.client_id '
       '   JOIN ( '
@@ -457,9 +457,15 @@ class ClientsApi(Resource):
       + childrenFilterScrypt +
       '   ) AS cchildren ON c.client_id = cchildren.children_client_id '
       '   LEFT JOIN ( '
-      '     SELECT s.sale_client_id, s.sale_total_value, MAX(s.sale_creation_date_time) AS last_sale_date '
-      '       FROM tbl_sale s '
-      '       GROUP BY s.sale_client_id '
+      '     SELECT svalue.sale_client_id, screation.last_sale_date, MAX(svalue.sale_total_value) AS last_sale_total_value '
+      '       FROM ( '
+      '         SELECT s.sale_client_id, MAX(s.sale_creation_date_time) AS last_sale_date '
+      '           FROM tbl_sale s '
+      '           GROUP BY s.sale_client_id '
+      '       ) AS screation '
+      '       JOIN tbl_sale svalue ON screation.sale_client_id = svalue.sale_client_id '
+      '       WHERE svalue.sale_creation_date_time = last_sale_date '
+      '       GROUP BY svalue.sale_client_id, screation.last_sale_date '
       '   ) AS csale ON c.client_id = csale.sale_client_id '
       + geralFilterScrypt)
     
@@ -487,9 +493,15 @@ class ClientsApi(Resource):
       + childrenFilterScrypt +
       '   ) AS cchildren ON c.client_id = cchildren.children_client_id '
       '   LEFT JOIN ( '
-      '     SELECT s.sale_client_id, s.sale_total_value, MAX(s.sale_creation_date_time) AS last_sale_date '
-      '       FROM tbl_sale s '
-      '       GROUP BY s.sale_client_id '
+      '     SELECT svalue.sale_client_id, screation.last_sale_date, MAX(svalue.sale_total_value) AS last_sale_total_value '
+      '       FROM ( '
+      '         SELECT s.sale_client_id, MAX(s.sale_creation_date_time) AS last_sale_date '
+      '           FROM tbl_sale s '
+      '           GROUP BY s.sale_client_id '
+      '       ) AS screation '
+      '       JOIN tbl_sale svalue ON screation.sale_client_id = svalue.sale_client_id '
+      '       WHERE svalue.sale_creation_date_time = last_sale_date '
+      '       GROUP BY svalue.sale_client_id, screation.last_sale_date '
       '   ) AS csale ON c.client_id = csale.sale_client_id '
       + geralFilterScryptNoLimit)
 
