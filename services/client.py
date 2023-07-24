@@ -401,7 +401,7 @@ class ClientsApi(Resource):
       if not splitedDM or len(splitedDM) != 2:
         return 'incorrect month_day end', 422
     
-    if args.get('order_by') == None or args.get('order_by_asc'):
+    if args.get('order_by') == None or args.get('order_by_asc') == None:
       return 'invalid order_by or order_by_asc fields', 422
     
     orderByAsc = (args['order_by_asc'] == '1' or args['order_by_asc'].lower() == 'true')
@@ -425,7 +425,7 @@ class ClientsApi(Resource):
         {'filterCollum':'last_sale_date', 'filterOperator':'>=', 'filterValue':args.get('last_sale_date_start')},
         {'filterCollum':'last_sale_date', 'filterOperator':'<=', 'filterValue':args.get('last_sale_date_end')}
       ],
-      orderByCollumns=args['order_by'], orderByAsc=orderByAsc, limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
+      groupByCollumns='p.person_name', orderByCollumns=args['order_by'], orderByAsc=orderByAsc, limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
 
     leftJoinOnChildren = not args.get('children_name') and not args.get('children_birth_month_day_start') and not args.get('children_birth_month_day_end')
 
