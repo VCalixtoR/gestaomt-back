@@ -320,7 +320,10 @@ class ConditionalsApi(Resource):
       + geralFilterScrypt)
     
     sqlScryptNoCount = (
-      ' SELECT COUNT(*) AS countc '
+      ' SELECT COUNT(*) AS total_quantity, '
+      ' CAST(SUM(cond.conditional_status="Cancelado") AS UNSIGNED) AS canceled_quantity, '
+      ' CAST(SUM(cond.conditional_status="Pendente") AS UNSIGNED) AS pending_quantity, '
+      ' CAST(SUM(cond.conditional_status="Devolvido") AS UNSIGNED) AS returned_quantity '
       '   FROM tbl_conditional cond '
       '   JOIN tbl_client cli ON cond.conditional_client_id = cli.client_id '
       '   JOIN tbl_person p_client ON cli.client_id = p_client.person_id '
@@ -328,16 +331,16 @@ class ConditionalsApi(Resource):
       '   JOIN tbl_person p_employee ON e.employee_id = p_employee.person_id '
       + geralFilterScryptNoLimit)
     
-    countConditionals = dbGetSingle(sqlScryptNoCount, geralFilterArgsNoLimit)
+    conditionalsSummary = dbGetSingle(sqlScryptNoCount, geralFilterArgsNoLimit)
     conditionalsQuery = dbGetAll(sqlScrypt, geralFilterArgs)
 
-    if not countConditionals or not conditionalsQuery:
-      return { 'count': 0, 'conditionals': [] }, 200
+    if not conditionalsSummary or not conditionalsQuery:
+      return { 'total_quantity': 0, 'conditionals': [] }, 200
 
     for conditionalRow in conditionalsQuery:
       conditionalRow['conditional_creation_date_time'] = str(conditionalRow['conditional_creation_date_time'])
     
-    return { 'count': countConditionals['countc'], 'conditionals': conditionalsQuery }, 200
+    return { 'total_quantity': conditionalsSummary['total_quantity'], 'conditionals': conditionalsQuery, 'summary': conditionalsSummary }, 200
 
 class ConditionalInfoApi(Resource):
     
