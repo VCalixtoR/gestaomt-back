@@ -344,13 +344,18 @@ class SalesApi(Resource):
       + geralFilterScrypt)
     
     sqlScryptNoCount = (
-      ' SELECT COUNT(*) AS counts, '
+      ' SELECT COUNT(*) AS total_quantity, '
       ' CAST(SUM(s.sale_total_value) AS UNSIGNED) AS total_value, '
-      ' CAST(SUM(pm.payment_method_name="Pix") AS UNSIGNED) AS pix, '
-      ' CAST(SUM(pm.payment_method_name="Dinheiro") AS UNSIGNED) AS dinheiro, '
-      ' CAST(SUM(pm.payment_method_name="Cheque") AS UNSIGNED) AS cheque, '
-      ' CAST(SUM(pm.payment_method_name="Cartão de débito") AS UNSIGNED) AS debito, '
-      ' CAST(SUM(pm.payment_method_name="Cartão de crédito") AS UNSIGNED) AS credito '
+      ' SUM(CASE WHEN pm.payment_method_name="Pix" THEN s.sale_total_value ELSE 0 END) pix_value, '
+      ' CAST(SUM(pm.payment_method_name="Pix") AS UNSIGNED) AS pix_quantity, '
+      ' SUM(CASE WHEN pm.payment_method_name="Dinheiro" THEN s.sale_total_value ELSE 0 END) dinheiro_value, '
+      ' CAST(SUM(pm.payment_method_name="Dinheiro") AS UNSIGNED) AS dinheiro_quantity, '
+      ' SUM(CASE WHEN pm.payment_method_name="Cheque" THEN s.sale_total_value ELSE 0 END) cheque_value, '
+      ' CAST(SUM(pm.payment_method_name="Cheque") AS UNSIGNED) AS cheque_quantity, '
+      ' SUM(CASE WHEN pm.payment_method_name="Cartão de débito" THEN s.sale_total_value ELSE 0 END) debito_value, '
+      ' CAST(SUM(pm.payment_method_name="Cartão de débito") AS UNSIGNED) AS debito_quantity, '
+      ' SUM(CASE WHEN pm.payment_method_name="Cartão de crédito" THEN s.sale_total_value ELSE 0 END) credito_value, '
+      ' CAST(SUM(pm.payment_method_name="Cartão de crédito") AS UNSIGNED) AS credito_quantity '
       '   FROM tbl_sale s '
       '   JOIN tbl_client c ON s.sale_client_id = c.client_id '
       '   JOIN tbl_person p_client ON c.client_id = p_client.person_id '
@@ -364,12 +369,12 @@ class SalesApi(Resource):
     salesQuery = dbGetAll(sqlScrypt, geralFilterArgs)
 
     if not salesSummary or not salesQuery:
-      return { 'count': 0, 'sales': [] }, 200
+      return { 'total_quantity': 0, 'sales': [] }, 200
 
     for saleRow in salesQuery:
       saleRow['sale_creation_date_time'] = str(saleRow['sale_creation_date_time'])
     
-    return { 'count': salesSummary['counts'], 'sales': salesQuery, 'summary': salesSummary }, 200
+    return { 'total_quantity': salesSummary['total_quantity'], 'sales': salesQuery, 'summary': salesSummary }, 200
   
 class SaleInfoApi(Resource):
     
