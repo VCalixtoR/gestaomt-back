@@ -344,25 +344,32 @@ class SalesApi(Resource):
       + geralFilterScrypt)
     
     sqlScryptNoCount = (
-      ' SELECT COUNT(*) AS counts '
+      ' SELECT COUNT(*) AS counts, '
+      ' CAST(SUM(s.sale_total_value) AS UNSIGNED) AS total_value, '
+      ' CAST(SUM(pm.payment_method_name="Pix") AS UNSIGNED) AS pix, '
+      ' CAST(SUM(pm.payment_method_name="Dinheiro") AS UNSIGNED) AS dinheiro, '
+      ' CAST(SUM(pm.payment_method_name="Cheque") AS UNSIGNED) AS cheque, '
+      ' CAST(SUM(pm.payment_method_name="Cartão de débito") AS UNSIGNED) AS debito, '
+      ' CAST(SUM(pm.payment_method_name="Cartão de crédito") AS UNSIGNED) AS credito '
       '   FROM tbl_sale s '
       '   JOIN tbl_client c ON s.sale_client_id = c.client_id '
       '   JOIN tbl_person p_client ON c.client_id = p_client.person_id '
       '   JOIN tbl_employee e ON s.sale_employee_id = e.employee_id '
-      '   JOIN tbl_user u ON e.employee_id = u.user_id '
-      '   JOIN tbl_person p_employee ON u.user_id = p_employee.person_id '
+      '   JOIN tbl_person p_employee ON e.employee_id = p_employee.person_id '
+      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
+      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
       + geralFilterScryptNoLimit)
     
-    countSales = dbGetSingle(sqlScryptNoCount, geralFilterArgsNoLimit)
+    salesSummary = dbGetSingle(sqlScryptNoCount, geralFilterArgsNoLimit)
     salesQuery = dbGetAll(sqlScrypt, geralFilterArgs)
 
-    if not countSales or not salesQuery:
+    if not salesSummary or not salesQuery:
       return { 'count': 0, 'sales': [] }, 200
 
     for saleRow in salesQuery:
       saleRow['sale_creation_date_time'] = str(saleRow['sale_creation_date_time'])
     
-    return { 'count': countSales['counts'], 'sales': salesQuery }, 200
+    return { 'count': salesSummary['counts'], 'sales': salesQuery, 'summary': salesSummary }, 200
   
 class SaleInfoApi(Resource):
     
