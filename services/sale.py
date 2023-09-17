@@ -50,7 +50,7 @@ class SaleApi(Resource):
 
     # test payment method installment
     payMethodQuery = dbGetSingle(
-      ' SELECT pm.payment_method_name, pmi.payment_method_Installment_number '
+      ' SELECT pm.payment_method_name, pmi.payment_method_installment_number '
       '   FROM tbl_payment_method pm '
       '   JOIN tbl_payment_method_installment pmi ON pm.payment_method_id = pmi.payment_method_id '
       '   WHERE pmi.payment_method_installment_id = %s; ', [(args['sale_payment_method_installment_id'])])
@@ -333,39 +333,48 @@ class SalesApi(Resource):
       ' SELECT s.sale_id, s.sale_status, s.sale_total_discount_percentage, s.sale_creation_date_time, s.sale_total_value, '
       ' p_client.person_name AS sale_client_name, '
       ' p_employee.person_name AS sale_employee_name, '
-      ' pm.payment_method_name, pmi.payment_method_Installment_number '
+      ' pms.payment_method_names, pms.payment_method_installment_numbers, pms.payment_method_values '
       '   FROM tbl_sale s '
       '   JOIN tbl_client c ON s.sale_client_id = c.client_id '
       '   JOIN tbl_person p_client ON c.client_id = p_client.person_id '
       '   JOIN tbl_employee e ON s.sale_employee_id = e.employee_id '
       '   JOIN tbl_person p_employee ON e.employee_id = p_employee.person_id '
-      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
-      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '   JOIN ( '
+      '     SELECT shpmi.sale_id, '
+      '     GROUP_CONCAT(payment_method_name SEPARATOR \',\') AS payment_method_names, '
+      '     GROUP_CONCAT(payment_method_installment_number SEPARATOR \',\') AS payment_method_installment_numbers, '
+      '     GROUP_CONCAT(payment_method_value SEPARATOR \',\') AS payment_method_values '
+      '       FROM tbl_sale_has_payment_method_installment shpmi '
+      '       JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_installment_id = pmi.payment_method_installment_id '
+      '	      JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '     GROUP BY shpmi.sale_id '
+      '   ) AS pms ON pms.sale_id = s.sale_id '
       + geralFilterScrypt)
     
-    sqlScryptNoCount = (
-      ' SELECT COUNT(*) AS total_quantity, '
-      ' CAST(SUM(s.sale_total_value) AS UNSIGNED) AS total_value, '
-      ' SUM(CASE WHEN pm.payment_method_name="Pix" THEN s.sale_total_value ELSE 0 END) pix_value, '
+    sqlScryptNoLimit = (
+      ' SELECT COUNT(DISTINCT s.sale_id) AS total_quantity, '
+      ' CAST(SUM(shpmi.payment_method_value) AS UNSIGNED) AS total_value, '
+      ' SUM(CASE WHEN pm.payment_method_name="Pix" THEN shpmi.payment_method_value ELSE 0 END) pix_value, '
       ' CAST(SUM(pm.payment_method_name="Pix") AS UNSIGNED) AS pix_quantity, '
-      ' SUM(CASE WHEN pm.payment_method_name="Dinheiro" THEN s.sale_total_value ELSE 0 END) dinheiro_value, '
+      ' SUM(CASE WHEN pm.payment_method_name="Dinheiro" THEN shpmi.payment_method_value ELSE 0 END) dinheiro_value, '
       ' CAST(SUM(pm.payment_method_name="Dinheiro") AS UNSIGNED) AS dinheiro_quantity, '
-      ' SUM(CASE WHEN pm.payment_method_name="Cheque" THEN s.sale_total_value ELSE 0 END) cheque_value, '
+      ' SUM(CASE WHEN pm.payment_method_name="Cheque" THEN shpmi.payment_method_value ELSE 0 END) cheque_value, '
       ' CAST(SUM(pm.payment_method_name="Cheque") AS UNSIGNED) AS cheque_quantity, '
-      ' SUM(CASE WHEN pm.payment_method_name="Cartão de débito" THEN s.sale_total_value ELSE 0 END) debito_value, '
+      ' SUM(CASE WHEN pm.payment_method_name="Cartão de débito" THEN shpmi.payment_method_value ELSE 0 END) debito_value, '
       ' CAST(SUM(pm.payment_method_name="Cartão de débito") AS UNSIGNED) AS debito_quantity, '
-      ' SUM(CASE WHEN pm.payment_method_name="Cartão de crédito" THEN s.sale_total_value ELSE 0 END) credito_value, '
+      ' SUM(CASE WHEN pm.payment_method_name="Cartão de crédito" THEN shpmi.payment_method_value ELSE 0 END) credito_value, '
       ' CAST(SUM(pm.payment_method_name="Cartão de crédito") AS UNSIGNED) AS credito_quantity '
       '   FROM tbl_sale s '
       '   JOIN tbl_client c ON s.sale_client_id = c.client_id '
       '   JOIN tbl_person p_client ON c.client_id = p_client.person_id '
       '   JOIN tbl_employee e ON s.sale_employee_id = e.employee_id '
       '   JOIN tbl_person p_employee ON e.employee_id = p_employee.person_id '
-      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
-      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '   JOIN tbl_sale_has_payment_method_installment shpmi ON s.sale_id = shpmi.sale_id '
+      '   JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_installment_id = pmi.payment_method_installment_id '
+      '	  JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
       + geralFilterScryptNoLimit)
     
-    salesSummary = dbGetSingle(sqlScryptNoCount, geralFilterArgsNoLimit)
+    salesSummary = dbGetSingle(sqlScryptNoLimit, geralFilterArgsNoLimit)
     salesQuery = dbGetAll(sqlScrypt, geralFilterArgs)
 
     if not salesSummary or not salesQuery:
@@ -393,7 +402,7 @@ class SaleInfoApi(Resource):
       [os.getenv('SQL_SCHEMA'), 'tbl_sale'])
     
     query['payment_methods'] = dbGetAll(
-      ' SELECT pmi.payment_method_installment_id, pm.payment_method_name, pmi.payment_method_Installment_number '
+      ' SELECT pmi.payment_method_installment_id, pm.payment_method_name, pmi.payment_method_installment_number '
       '   FROM tbl_payment_method pm '
       '   JOIN tbl_payment_method_installment pmi ON pm.payment_method_id = pmi.payment_method_id; ')
     
