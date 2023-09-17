@@ -182,8 +182,16 @@ class SaleApi(Resource):
     saleQuery = dbGetSingle(
       ' SELECT * '
 	    '   FROM tbl_sale s '
-      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
-      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '   JOIN ( '
+      '     SELECT shpmi.sale_id, '
+      '     GROUP_CONCAT(payment_method_name SEPARATOR \',\') AS payment_method_names, '
+      '     GROUP_CONCAT(payment_method_installment_number SEPARATOR \',\') AS payment_method_installment_numbers, '
+      '     GROUP_CONCAT(payment_method_value SEPARATOR \',\') AS payment_method_values '
+      '       FROM tbl_sale_has_payment_method_installment shpmi '
+      '       JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_installment_id = pmi.payment_method_installment_id '
+      '	      JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '     GROUP BY shpmi.sale_id '
+      '   ) AS pms ON pms.sale_id = s.sale_id '
       '   WHERE s.sale_id = %s; ',
       [(args['sale_id'])])
     
