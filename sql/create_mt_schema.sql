@@ -233,7 +233,6 @@ CREATE TABLE tbl_sale(
 	sale_id INT NOT NULL AUTO_INCREMENT,
     sale_client_id INT NOT NULL,
     sale_employee_id INT NOT NULL,
-    sale_payment_method_installment_id INT NOT NULL,
     sale_status ENUM('Confirmado', 'Cancelado') DEFAULT ('Confirmado') NOT NULL,
     sale_total_discount_percentage FLOAT NOT NULL,
     sale_total_value FLOAT NOT NULL,
@@ -243,6 +242,15 @@ CREATE TABLE tbl_sale(
     FOREIGN KEY (sale_employee_id) REFERENCES tbl_employee(employee_id),
     FOREIGN KEY (sale_payment_method_installment_id) REFERENCES tbl_payment_method_installment(payment_method_installment_id),
 	CHECK (sale_total_discount_percentage >= 0)
+);
+
+CREATE TABLE tbl_sale_has_payment_method_installment(
+	sale_has_payment_method_installment_id INT NOT NULL AUTO_INCREMENT,
+    sale_id INT NOT NULL,
+    payment_method_Installment_id INT NOT NULL,
+    PRIMARY KEY (sale_has_payment_method_installment_id),
+    FOREIGN KEY (sale_id) REFERENCES tbl_sale(sale_id),
+    FOREIGN KEY (payment_method_Installment_id) REFERENCES tbl_payment_method_installment(payment_method_installment_id)
 );
 
 CREATE TABLE tbl_sale_has_product(
@@ -298,8 +306,7 @@ INSERT INTO tbl_employee (employee_id, employee_active, employee_comission) VALU
 	(1, TRUE, 0.0),
     (2, TRUE, 0.0);
 
-/* usefull commands
-ALTER TABLE tbl_client ADD COLUMN client_classification ENUM('Ruim', 'Boa', 'Excelente') DEFAULT 'Ruim' NOT NULL AFTER client_complement;
-ALTER TABLE tbl_client ADD COLUMN client_observations VARCHAR(1000) AFTER client_classification;
-ALTER TABLE tbl_product ADD COLUMN product_observations VARCHAR(1000) AFTER product_name;
+/*
+USE gestao_mt_homol;
+UPDATE tbl_user SET user_hash_password = "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4";
 */
