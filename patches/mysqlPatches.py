@@ -14,11 +14,11 @@ def createSaleHasPaymentMethodInstallment():
       '   sale_has_payment_method_installment_id INT NOT NULL AUTO_INCREMENT, '
       '   sale_id INT NOT NULL, '
       '   payment_method_Installment_id INT NOT NULL, '
-      '   payment_method_total_value FLOAT NOT NULL, '
+      '   payment_method_value FLOAT NOT NULL, '
 	    '   PRIMARY KEY (sale_has_payment_method_installment_id), '
       '   FOREIGN KEY (sale_id) REFERENCES tbl_sale(sale_id), '
       '   FOREIGN KEY (payment_method_Installment_id) REFERENCES tbl_payment_method_installment(payment_method_installment_id), '
-      '   CHECK (payment_method_total_value > 0) '
+      '   CHECK (payment_method_value > 0) '
       ' ); '
     )
     dbExecute(sqlScrypt)
@@ -48,7 +48,7 @@ def createSaleHasPaymentMethodInstallment():
     print("\tInserting sale info into tbl_sale_has_payment_method_installment...")
     for sale in sales:
       dbExecute(
-        ' INSERT INTO tbl_sale_has_payment_method_installment (sale_id, payment_method_Installment_id, payment_method_total_value) VALUES (%s, %s, %s); ', 
+        ' INSERT INTO tbl_sale_has_payment_method_installment (sale_id, payment_method_Installment_id, payment_method_value) VALUES (%s, %s, %s); ', 
         [sale["sale_id"], sale["sale_payment_method_installment_id"], sale["sale_total_value"]],
         transactionMode=True,
         dbObjectIns=dbObjectIns
