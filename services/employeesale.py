@@ -30,14 +30,21 @@ class EmployeeSalesApi(Resource):
       orderByCollumns='s.sale_creation_date_time', limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
 
     salesQuery = dbGetAll(
-      ' SELECT s.sale_id, c_p.person_name AS client_name, pm.payment_method_name, pmi.payment_method_Installment_number, '
+      ' SELECT s.sale_id, cp.person_name AS client_name, pms.payment_method_names, pms.payment_method_Installment_numbers, '
       ' s.sale_creation_date_time, s.sale_total_value, e.employee_comission '
       '   FROM tbl_employee e '
       '   JOIN tbl_sale s ON e.employee_id = s.sale_employee_id '
       '   JOIN tbl_client c ON s.sale_client_id = c.client_id '
-      '   JOIN tbl_person c_p ON c.client_id = c_p.person_id '
-      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
-      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '   JOIN tbl_person cp ON c.client_id = cp.person_id '
+      '   JOIN ( '
+      '     SELECT shpmi.sale_id, '
+      '     GROUP_CONCAT(payment_method_name SEPARATOR \',\') AS payment_method_names, '
+      '     GROUP_CONCAT(payment_method_Installment_number SEPARATOR \',\') AS payment_method_Installment_numbers '
+      '       FROM tbl_sale_has_payment_method_installment shpmi '
+      '       JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_Installment_id = pmi.payment_method_installment_id '
+      '	      JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '     GROUP BY shpmi.sale_id '
+      '   ) AS pms ON pms.sale_id = s.sale_id '
       + geralFilterScrypt, geralFilterArgs)
     
     countQuery = dbGetSingle(
@@ -45,9 +52,16 @@ class EmployeeSalesApi(Resource):
       '   FROM tbl_employee e '
       '   JOIN tbl_sale s ON e.employee_id = s.sale_employee_id '
       '   JOIN tbl_client c ON s.sale_client_id = c.client_id '
-      '   JOIN tbl_person c_p ON c.client_id = c_p.person_id '
-      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
-      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '   JOIN tbl_person cp ON c.client_id = cp.person_id '
+      '   JOIN ( '
+      '     SELECT shpmi.sale_id, '
+      '     GROUP_CONCAT(payment_method_name SEPARATOR \',\') AS payment_method_names, '
+      '     GROUP_CONCAT(payment_method_Installment_number SEPARATOR \',\') AS payment_method_Installment_numbers '
+      '       FROM tbl_sale_has_payment_method_installment shpmi '
+      '       JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_Installment_id = pmi.payment_method_installment_id '
+      '	      JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '     GROUP BY shpmi.sale_id '
+      '   ) AS pms ON pms.sale_id = s.sale_id '
       + geralFilterScryptNoLimit, geralFilterArgsNoLimit)
     
     if not countQuery or not salesQuery:
