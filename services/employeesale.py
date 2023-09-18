@@ -30,7 +30,8 @@ class EmployeeSalesApi(Resource):
       orderByCollumns='s.sale_creation_date_time', limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
 
     salesQuery = dbGetAll(
-      ' SELECT s.sale_id, cp.person_name AS client_name, pms.payment_method_names, pms.payment_method_installment_numbers, '
+      ' SELECT s.sale_id, cp.person_name AS client_name, '
+      ' pms.payment_method_names, pms.payment_method_installment_numbers, pms.payment_method_values, '
       ' s.sale_creation_date_time, s.sale_total_value, e.employee_comission '
       '   FROM tbl_employee e '
       '   JOIN tbl_sale s ON e.employee_id = s.sale_employee_id '
@@ -39,7 +40,8 @@ class EmployeeSalesApi(Resource):
       '   JOIN ( '
       '     SELECT shpmi.sale_id, '
       '     GROUP_CONCAT(payment_method_name SEPARATOR \',\') AS payment_method_names, '
-      '     GROUP_CONCAT(payment_method_installment_number SEPARATOR \',\') AS payment_method_installment_numbers '
+      '     GROUP_CONCAT(payment_method_installment_number SEPARATOR \',\') AS payment_method_installment_numbers, '
+      '     GROUP_CONCAT(payment_method_value SEPARATOR \',\') AS payment_method_values '
       '       FROM tbl_sale_has_payment_method_installment shpmi '
       '       JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_installment_id = pmi.payment_method_installment_id '
       '	      JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
@@ -56,7 +58,8 @@ class EmployeeSalesApi(Resource):
       '   JOIN ( '
       '     SELECT shpmi.sale_id, '
       '     GROUP_CONCAT(payment_method_name SEPARATOR \',\') AS payment_method_names, '
-      '     GROUP_CONCAT(payment_method_installment_number SEPARATOR \',\') AS payment_method_installment_numbers '
+      '     GROUP_CONCAT(payment_method_installment_number SEPARATOR \',\') AS payment_method_installment_numbers, '
+      '     GROUP_CONCAT(payment_method_value SEPARATOR \',\') AS payment_method_values '
       '       FROM tbl_sale_has_payment_method_installment shpmi '
       '       JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_installment_id = pmi.payment_method_installment_id '
       '	      JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
