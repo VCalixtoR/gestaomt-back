@@ -15,7 +15,7 @@ class SaleApi(Resource):
     argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
     argsParser.add_argument('sale_client_id', location='json', type=int, help='sale client id, required', required=True)
     argsParser.add_argument('sale_employee_id', location='json', type=int, help='sale employee id, required', required=True)
-    argsParser.add_argument('sale_payment_method_installment_id', location='json', type=int, help='sale payment method installment id, required', required=True)
+    argsParser.add_argument('sale_payment_method_installments', location='json', type=list, help='sale payment method installments with id and value, required', required=True)
     argsParser.add_argument('sale_has_products', location='json', type=list, help='product and its variations list, required', required=True)
     argsParser.add_argument('sale_total_discount_percentage', location='json', type=float, help='sale total discount percentage float, required and can be 0.0', required=True)
     argsParser.add_argument('sale_total_value', location='json', type=float, help='sale total value float, required', required=True)
@@ -48,14 +48,20 @@ class SaleApi(Resource):
     if not employeeQuery['user_entry_allowed'] or not employeeQuery['employee_active']:
       return 'O funcionario associado à venda não esta habilitado no sistema', 422
 
-    # test payment method installment
-    payMethodQuery = dbGetSingle(
-      ' SELECT pm.payment_method_name, pmi.payment_method_Installment_number '
-      '   FROM tbl_payment_method pm '
-      '   JOIN tbl_payment_method_installment pmi ON pm.payment_method_id = pmi.payment_method_id '
-      '   WHERE pmi.payment_method_installment_id = %s; ', [(args['sale_payment_method_installment_id'])])
-    if not payMethodQuery:
-      return 'A forma de pagamento associado à venda não existe no sistema', 422
+    # test payment method installments
+    for salePaymentMethodInstallment in args['sale_payment_method_installments']:
+
+      if not salePaymentMethodInstallment.get('id') or not salePaymentMethodInstallment.get('value'):
+        return 'A forma de pagamento associado à venda está com formato inválido', 422
+
+      payMethodQuery = dbGetSingle(
+        ' SELECT pm.payment_method_name, pmi.payment_method_installment_number '
+        '   FROM tbl_payment_method pm '
+        '   JOIN tbl_payment_method_installment pmi ON pm.payment_method_id = pmi.payment_method_id '
+        '   WHERE pmi.payment_method_installment_id = %s; ', [(salePaymentMethodInstallment['id'])])
+      
+      if not payMethodQuery:
+        return 'A forma de pagamento associado à venda não existe no sistema', 422
 
     # test sale total discount percentage
     if args['sale_total_discount_percentage'] < 0.0:
@@ -122,15 +128,21 @@ class SaleApi(Resource):
     try:
       # inserts sale and gets sale id
       dbExecute(
-        ' INSERT INTO tbl_sale (sale_client_id, sale_employee_id, sale_payment_method_installment_id, sale_total_discount_percentage, sale_total_value) VALUES '
-        '   (%s, %s, %s, %s, %s) ',
-        [args['sale_client_id'], args['sale_employee_id'], args['sale_payment_method_installment_id'], args['sale_total_discount_percentage'], args['sale_total_value']],
+        ' INSERT INTO tbl_sale (sale_client_id, sale_employee_id, sale_total_discount_percentage, sale_total_value) VALUES '
+        '   (%s, %s, %s, %s) ',
+        [args['sale_client_id'], args['sale_employee_id'], args['sale_total_discount_percentage'], args['sale_total_value']],
         True, dbObjectIns)
       
       saleIdQuery = dbGetSingle(' SELECT LAST_INSERT_ID() AS sale_id; ', None, True, dbObjectIns)
       
       if not saleIdQuery:
         raise Exception('Exception empty select saleIdQuery after insert from tbl_sale put')
+      
+      # set installments
+      for salePaymentMethodInstallment in args['sale_payment_method_installments']:
+        dbExecute(
+          ' INSERT INTO tbl_sale_has_payment_method_installment (sale_id, payment_method_installment_id, payment_method_value) VALUES (%s, %s, %s); ', 
+          [saleIdQuery['sale_id'], salePaymentMethodInstallment['id'], salePaymentMethodInstallment['value']], True, dbObjectIns)
       
       for product in args['sale_has_products']:
         # set product immutable
@@ -182,8 +194,16 @@ class SaleApi(Resource):
     saleQuery = dbGetSingle(
       ' SELECT * '
 	    '   FROM tbl_sale s '
-      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
-      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '   JOIN ( '
+      '     SELECT shpmi.sale_id, '
+      '     GROUP_CONCAT(payment_method_name SEPARATOR \',\') AS payment_method_names, '
+      '     GROUP_CONCAT(payment_method_installment_number SEPARATOR \',\') AS payment_method_installment_numbers, '
+      '     GROUP_CONCAT(payment_method_value SEPARATOR \',\') AS payment_method_values '
+      '       FROM tbl_sale_has_payment_method_installment shpmi '
+      '       JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_installment_id = pmi.payment_method_installment_id '
+      '	      JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '     GROUP BY shpmi.sale_id '
+      '   ) AS pms ON pms.sale_id = s.sale_id '
       '   WHERE s.sale_id = %s; ',
       [(args['sale_id'])])
     
@@ -333,39 +353,48 @@ class SalesApi(Resource):
       ' SELECT s.sale_id, s.sale_status, s.sale_total_discount_percentage, s.sale_creation_date_time, s.sale_total_value, '
       ' p_client.person_name AS sale_client_name, '
       ' p_employee.person_name AS sale_employee_name, '
-      ' pm.payment_method_name, pmi.payment_method_Installment_number '
+      ' pms.payment_method_names, pms.payment_method_installment_numbers, pms.payment_method_values '
       '   FROM tbl_sale s '
       '   JOIN tbl_client c ON s.sale_client_id = c.client_id '
       '   JOIN tbl_person p_client ON c.client_id = p_client.person_id '
       '   JOIN tbl_employee e ON s.sale_employee_id = e.employee_id '
       '   JOIN tbl_person p_employee ON e.employee_id = p_employee.person_id '
-      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
-      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '   JOIN ( '
+      '     SELECT shpmi.sale_id, '
+      '     GROUP_CONCAT(payment_method_name SEPARATOR \',\') AS payment_method_names, '
+      '     GROUP_CONCAT(payment_method_installment_number SEPARATOR \',\') AS payment_method_installment_numbers, '
+      '     GROUP_CONCAT(payment_method_value SEPARATOR \',\') AS payment_method_values '
+      '       FROM tbl_sale_has_payment_method_installment shpmi '
+      '       JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_installment_id = pmi.payment_method_installment_id '
+      '	      JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '     GROUP BY shpmi.sale_id '
+      '   ) AS pms ON pms.sale_id = s.sale_id '
       + geralFilterScrypt)
     
-    sqlScryptNoCount = (
-      ' SELECT COUNT(*) AS total_quantity, '
-      ' CAST(SUM(s.sale_total_value) AS UNSIGNED) AS total_value, '
-      ' SUM(CASE WHEN pm.payment_method_name="Pix" THEN s.sale_total_value ELSE 0 END) pix_value, '
+    sqlScryptNoLimit = (
+      ' SELECT COUNT(DISTINCT s.sale_id) AS total_quantity, '
+      ' CAST(SUM(shpmi.payment_method_value) AS UNSIGNED) AS total_value, '
+      ' SUM(CASE WHEN pm.payment_method_name="Pix" THEN shpmi.payment_method_value ELSE 0 END) pix_value, '
       ' CAST(SUM(pm.payment_method_name="Pix") AS UNSIGNED) AS pix_quantity, '
-      ' SUM(CASE WHEN pm.payment_method_name="Dinheiro" THEN s.sale_total_value ELSE 0 END) dinheiro_value, '
+      ' SUM(CASE WHEN pm.payment_method_name="Dinheiro" THEN shpmi.payment_method_value ELSE 0 END) dinheiro_value, '
       ' CAST(SUM(pm.payment_method_name="Dinheiro") AS UNSIGNED) AS dinheiro_quantity, '
-      ' SUM(CASE WHEN pm.payment_method_name="Cheque" THEN s.sale_total_value ELSE 0 END) cheque_value, '
+      ' SUM(CASE WHEN pm.payment_method_name="Cheque" THEN shpmi.payment_method_value ELSE 0 END) cheque_value, '
       ' CAST(SUM(pm.payment_method_name="Cheque") AS UNSIGNED) AS cheque_quantity, '
-      ' SUM(CASE WHEN pm.payment_method_name="Cartão de débito" THEN s.sale_total_value ELSE 0 END) debito_value, '
+      ' SUM(CASE WHEN pm.payment_method_name="Cartão de débito" THEN shpmi.payment_method_value ELSE 0 END) debito_value, '
       ' CAST(SUM(pm.payment_method_name="Cartão de débito") AS UNSIGNED) AS debito_quantity, '
-      ' SUM(CASE WHEN pm.payment_method_name="Cartão de crédito" THEN s.sale_total_value ELSE 0 END) credito_value, '
+      ' SUM(CASE WHEN pm.payment_method_name="Cartão de crédito" THEN shpmi.payment_method_value ELSE 0 END) credito_value, '
       ' CAST(SUM(pm.payment_method_name="Cartão de crédito") AS UNSIGNED) AS credito_quantity '
       '   FROM tbl_sale s '
       '   JOIN tbl_client c ON s.sale_client_id = c.client_id '
       '   JOIN tbl_person p_client ON c.client_id = p_client.person_id '
       '   JOIN tbl_employee e ON s.sale_employee_id = e.employee_id '
       '   JOIN tbl_person p_employee ON e.employee_id = p_employee.person_id '
-      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
-      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '   JOIN tbl_sale_has_payment_method_installment shpmi ON s.sale_id = shpmi.sale_id '
+      '   JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_installment_id = pmi.payment_method_installment_id '
+      '	  JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
       + geralFilterScryptNoLimit)
     
-    salesSummary = dbGetSingle(sqlScryptNoCount, geralFilterArgsNoLimit)
+    salesSummary = dbGetSingle(sqlScryptNoLimit, geralFilterArgsNoLimit)
     salesQuery = dbGetAll(sqlScrypt, geralFilterArgs)
 
     if not salesSummary or not salesQuery:
@@ -393,7 +422,7 @@ class SaleInfoApi(Resource):
       [os.getenv('SQL_SCHEMA'), 'tbl_sale'])
     
     query['payment_methods'] = dbGetAll(
-      ' SELECT pmi.payment_method_installment_id, pm.payment_method_name, pmi.payment_method_Installment_number '
+      ' SELECT pmi.payment_method_installment_id, pm.payment_method_name, pm.payment_method_id, pmi.payment_method_installment_number '
       '   FROM tbl_payment_method pm '
       '   JOIN tbl_payment_method_installment pmi ON pm.payment_method_id = pmi.payment_method_id; ')
     

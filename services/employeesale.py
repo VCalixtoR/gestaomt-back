@@ -30,14 +30,23 @@ class EmployeeSalesApi(Resource):
       orderByCollumns='s.sale_creation_date_time', limitValue=args['limit'], offsetValue=args['offset'], getFilterWithoutLimits=True)
 
     salesQuery = dbGetAll(
-      ' SELECT s.sale_id, c_p.person_name AS client_name, pm.payment_method_name, pmi.payment_method_Installment_number, '
+      ' SELECT s.sale_id, cp.person_name AS client_name, '
+      ' pms.payment_method_names, pms.payment_method_installment_numbers, pms.payment_method_values, '
       ' s.sale_creation_date_time, s.sale_total_value, e.employee_comission '
       '   FROM tbl_employee e '
       '   JOIN tbl_sale s ON e.employee_id = s.sale_employee_id '
       '   JOIN tbl_client c ON s.sale_client_id = c.client_id '
-      '   JOIN tbl_person c_p ON c.client_id = c_p.person_id '
-      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
-      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '   JOIN tbl_person cp ON c.client_id = cp.person_id '
+      '   JOIN ( '
+      '     SELECT shpmi.sale_id, '
+      '     GROUP_CONCAT(payment_method_name SEPARATOR \',\') AS payment_method_names, '
+      '     GROUP_CONCAT(payment_method_installment_number SEPARATOR \',\') AS payment_method_installment_numbers, '
+      '     GROUP_CONCAT(payment_method_value SEPARATOR \',\') AS payment_method_values '
+      '       FROM tbl_sale_has_payment_method_installment shpmi '
+      '       JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_installment_id = pmi.payment_method_installment_id '
+      '	      JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '     GROUP BY shpmi.sale_id '
+      '   ) AS pms ON pms.sale_id = s.sale_id '
       + geralFilterScrypt, geralFilterArgs)
     
     countQuery = dbGetSingle(
@@ -45,9 +54,17 @@ class EmployeeSalesApi(Resource):
       '   FROM tbl_employee e '
       '   JOIN tbl_sale s ON e.employee_id = s.sale_employee_id '
       '   JOIN tbl_client c ON s.sale_client_id = c.client_id '
-      '   JOIN tbl_person c_p ON c.client_id = c_p.person_id '
-      '   JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
-      '   JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '   JOIN tbl_person cp ON c.client_id = cp.person_id '
+      '   JOIN ( '
+      '     SELECT shpmi.sale_id, '
+      '     GROUP_CONCAT(payment_method_name SEPARATOR \',\') AS payment_method_names, '
+      '     GROUP_CONCAT(payment_method_installment_number SEPARATOR \',\') AS payment_method_installment_numbers, '
+      '     GROUP_CONCAT(payment_method_value SEPARATOR \',\') AS payment_method_values '
+      '       FROM tbl_sale_has_payment_method_installment shpmi '
+      '       JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_installment_id = pmi.payment_method_installment_id '
+      '	      JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
+      '     GROUP BY shpmi.sale_id '
+      '   ) AS pms ON pms.sale_id = s.sale_id '
       + geralFilterScryptNoLimit, geralFilterArgsNoLimit)
     
     if not countQuery or not salesQuery:
@@ -82,7 +99,7 @@ class EmployeeSalesSummaryApi(Resource):
     if not employeeQuery['employee_active']:
       return 'Funcionário não está ativo!', 401
     
-    filterCountScrypt, filterCountArgs =  dbGetSqlFilterScrypt(
+    filterPaymentCountScrypt, filterPaymentCountArgs =  dbGetSqlFilterScrypt(
       [
         {'filterCollum':'s.sale_employee_id', 'filterOperator':'=', 'filterValue':args.get('employee_id')},
         {'filterCollum':'s.sale_creation_date_time', 'filterOperator':'>=', 'filterValue':args.get('start_date')},
@@ -90,25 +107,46 @@ class EmployeeSalesSummaryApi(Resource):
       ],
       groupByCollumns='pmi.payment_method_id', filterEnding='')
 
+    filterSalesCountScrypt, filterSalesCountArgs =  dbGetSqlFilterScrypt(
+      [
+        {'filterCollum':'s.sale_employee_id', 'filterOperator':'=', 'filterValue':args.get('employee_id')},
+        {'filterCollum':'s.sale_creation_date_time', 'filterOperator':'>=', 'filterValue':args.get('start_date')},
+        {'filterCollum':'s.sale_creation_date_time', 'filterOperator':'<=', 'filterValue':args.get('end_date')}
+      ],
+      filterEnding='')
+
     paymentSaleQuery = dbGetAll(
-      '  SELECT payment_method_name, payment_total_sales, payment_total_sales_value '
+      '  SELECT pm.payment_method_name, payment_methods_count, payment_methods_value '
 	    '   FROM tbl_payment_method pm  '
       '   LEFT JOIN ( '
-		  '     SELECT pmi.payment_method_id, COUNT(sale_id) AS payment_total_sales, SUM(sale_total_value) AS payment_total_sales_value '
-			'       FROM tbl_sale s '
-      '       JOIN tbl_payment_method_installment pmi ON s.sale_payment_method_installment_id = pmi.payment_method_installment_id '
-      + filterCountScrypt +
-      '   ) AS payment_calc ON pm.payment_method_id = payment_calc.payment_method_id; ', filterCountArgs)
+		  '     SELECT pmi.payment_method_id, COUNT(sale_has_payment_method_installment_id) AS payment_methods_count, SUM(payment_method_value) AS payment_methods_value '
+      '       FROM tbl_sale s '
+			'       JOIN tbl_sale_has_payment_method_installment shpmi ON s.sale_id = shpmi.sale_id '
+      '       JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_installment_id = pmi.payment_method_installment_id '
+      + filterPaymentCountScrypt +
+      '   ) AS payment_calc ON pm.payment_method_id = payment_calc.payment_method_id; ', filterPaymentCountArgs)
+
+    totalSaleQuery = dbGetSingle(
+      '  SELECT COUNT(DISTINCT s.sale_id) AS sales_count, SUM(shpmi.payment_method_value) AS sales_value '
+      '       FROM tbl_sale s '
+      '       JOIN tbl_sale_has_payment_method_installment shpmi ON s.sale_id = shpmi.sale_id '
+      + filterSalesCountScrypt, filterSalesCountArgs)
       
     if not paymentSaleQuery:
       return 'Pagamentos não encontrados!', 404
     
     for paymentRow in paymentSaleQuery:
 
-      if not paymentRow['payment_total_sales'] or not paymentRow['payment_total_sales_value']:
-        paymentRow['payment_total_sales'] = 0
-        paymentRow['payment_total_sales_value'] = 0
+      if not paymentRow['payment_methods_count'] or not paymentRow['payment_methods_value']:
+        paymentRow['payment_methods_count'] = 0
+        paymentRow['payment_methods_value'] = 0
 
-      paymentRow['payment_total_sales_comission_value'] = paymentRow['payment_total_sales_value'] * employeeQuery['employee_comission']
+      paymentRow['payment_methods_comission_value'] = paymentRow['payment_methods_value'] * employeeQuery['employee_comission']
 
-    return { 'payments' : paymentSaleQuery }, 200
+    if not totalSaleQuery or not totalSaleQuery['sales_count'] or not totalSaleQuery['sales_value']:
+      totalSaleQuery['sales_count'] = 0
+      totalSaleQuery['sales_value'] = 0
+    
+    totalSaleQuery['sales_comission'] = totalSaleQuery['sales_value'] * employeeQuery['employee_comission']
+
+    return { 'payments' : paymentSaleQuery, 'sales': totalSaleQuery }, 200

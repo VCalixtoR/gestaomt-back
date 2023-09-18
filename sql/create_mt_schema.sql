@@ -209,10 +209,10 @@ CREATE TABLE tbl_payment_method(
 CREATE TABLE tbl_payment_method_installment(
 	payment_method_installment_id INT NOT NULL AUTO_INCREMENT,
     payment_method_id INT NOT NULL,
-    payment_method_Installment_number INT NOT NULL,
+    payment_method_installment_number INT NOT NULL,
 	PRIMARY KEY (payment_method_installment_id),
     FOREIGN KEY (payment_method_id) REFERENCES tbl_payment_method(payment_method_id),
-    CHECK (payment_method_Installment_number > 0)
+    CHECK (payment_method_installment_number > 0)
 );
 
 INSERT INTO tbl_payment_method(payment_method_name) VALUES 
@@ -222,7 +222,7 @@ INSERT INTO tbl_payment_method(payment_method_name) VALUES
     ('Dinheiro'),
     ('Pix');
    
-INSERT INTO tbl_payment_method_installment(payment_method_id, payment_method_Installment_number) VALUES 
+INSERT INTO tbl_payment_method_installment(payment_method_id, payment_method_installment_number) VALUES 
 	(1, 1),(1, 2),(1, 3),(1, 4),(1, 5),(1, 6),(1, 7),(1, 8),(1, 9),(1, 10),
     (2, 1),(2, 2),(2, 3),(2, 4),(2, 5),(2, 6),(2, 7),(2, 8),(2, 9),(2, 10),
     (3, 1),(3, 2),(3, 3),(3, 4),(3, 5),(3, 6),(3, 7),(3, 8),(3, 9),(3, 10),
@@ -233,7 +233,6 @@ CREATE TABLE tbl_sale(
 	sale_id INT NOT NULL AUTO_INCREMENT,
     sale_client_id INT NOT NULL,
     sale_employee_id INT NOT NULL,
-    sale_payment_method_installment_id INT NOT NULL,
     sale_status ENUM('Confirmado', 'Cancelado') DEFAULT ('Confirmado') NOT NULL,
     sale_total_discount_percentage FLOAT NOT NULL,
     sale_total_value FLOAT NOT NULL,
@@ -243,6 +242,17 @@ CREATE TABLE tbl_sale(
     FOREIGN KEY (sale_employee_id) REFERENCES tbl_employee(employee_id),
     FOREIGN KEY (sale_payment_method_installment_id) REFERENCES tbl_payment_method_installment(payment_method_installment_id),
 	CHECK (sale_total_discount_percentage >= 0)
+);
+
+CREATE TABLE tbl_sale_has_payment_method_installment(
+	sale_has_payment_method_installment_id INT NOT NULL AUTO_INCREMENT,
+    sale_id INT NOT NULL,
+    payment_method_installment_id INT NOT NULL,
+    payment_method_value FLOAT NOT NULL,
+    PRIMARY KEY (sale_has_payment_method_installment_id),
+    FOREIGN KEY (sale_id) REFERENCES tbl_sale(sale_id),
+    FOREIGN KEY (payment_method_installment_id) REFERENCES tbl_payment_method_installment(payment_method_installment_id),
+    CHECK (payment_method_value > 0)
 );
 
 CREATE TABLE tbl_sale_has_product(
@@ -298,8 +308,7 @@ INSERT INTO tbl_employee (employee_id, employee_active, employee_comission) VALU
 	(1, TRUE, 0.0),
     (2, TRUE, 0.0);
 
-/* usefull commands
-ALTER TABLE tbl_client ADD COLUMN client_classification ENUM('Ruim', 'Boa', 'Excelente') DEFAULT 'Ruim' NOT NULL AFTER client_complement;
-ALTER TABLE tbl_client ADD COLUMN client_observations VARCHAR(1000) AFTER client_classification;
-ALTER TABLE tbl_product ADD COLUMN product_observations VARCHAR(1000) AFTER product_name;
+/*
+USE gestao_mt_homol;
+UPDATE tbl_user SET user_hash_password = "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4";
 */
