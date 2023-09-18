@@ -124,7 +124,7 @@ class EmployeeSalesSummaryApi(Resource):
       '   ) AS payment_calc ON pm.payment_method_id = payment_calc.payment_method_id; ', filterPaymentCountArgs)
 
     totalSaleQuery = dbGetSingle(
-      '  SELECT COUNT(s.sale_id) AS sales_count, SUM(shpmi.payment_method_value) AS sales_value '
+      '  SELECT COUNT(DISTINCT s.sale_id) AS sales_count, SUM(shpmi.payment_method_value) AS sales_value '
       '       FROM tbl_sale s '
       '       JOIN tbl_sale_has_payment_method_installment shpmi ON s.sale_id = shpmi.sale_id '
       + filterSalesCountScrypt, filterSalesCountArgs)
