@@ -15,7 +15,7 @@ class SaleApi(Resource):
     argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
     argsParser.add_argument('sale_client_id', location='json', type=int, help='sale client id, required', required=True)
     argsParser.add_argument('sale_employee_id', location='json', type=int, help='sale employee id, required', required=True)
-    argsParser.add_argument('sale_payment_method_installment_id', location='json', type=int, help='sale payment method installment id, required', required=True)
+    argsParser.add_argument('sale_payment_method_installments', location='json', type=list, help='sale payment method installments with id and value, required', required=True)
     argsParser.add_argument('sale_has_products', location='json', type=list, help='product and its variations list, required', required=True)
     argsParser.add_argument('sale_total_discount_percentage', location='json', type=float, help='sale total discount percentage float, required and can be 0.0', required=True)
     argsParser.add_argument('sale_total_value', location='json', type=float, help='sale total value float, required', required=True)
@@ -48,14 +48,20 @@ class SaleApi(Resource):
     if not employeeQuery['user_entry_allowed'] or not employeeQuery['employee_active']:
       return 'O funcionario associado à venda não esta habilitado no sistema', 422
 
-    # test payment method installment
-    payMethodQuery = dbGetSingle(
-      ' SELECT pm.payment_method_name, pmi.payment_method_installment_number '
-      '   FROM tbl_payment_method pm '
-      '   JOIN tbl_payment_method_installment pmi ON pm.payment_method_id = pmi.payment_method_id '
-      '   WHERE pmi.payment_method_installment_id = %s; ', [(args['sale_payment_method_installment_id'])])
-    if not payMethodQuery:
-      return 'A forma de pagamento associado à venda não existe no sistema', 422
+    # test payment method installments
+    for salePaymentMethodInstallment in args['sale_payment_method_installments']:
+
+      if not salePaymentMethodInstallment.get('id') or not salePaymentMethodInstallment.get('value'):
+        return 'A forma de pagamento associado à venda está com formato inválido', 422
+
+      payMethodQuery = dbGetSingle(
+        ' SELECT pm.payment_method_name, pmi.payment_method_installment_number '
+        '   FROM tbl_payment_method pm '
+        '   JOIN tbl_payment_method_installment pmi ON pm.payment_method_id = pmi.payment_method_id '
+        '   WHERE pmi.payment_method_installment_id = %s; ', [(salePaymentMethodInstallment['id'])])
+      
+      if not payMethodQuery:
+        return 'A forma de pagamento associado à venda não existe no sistema', 422
 
     # test sale total discount percentage
     if args['sale_total_discount_percentage'] < 0.0:
@@ -122,15 +128,21 @@ class SaleApi(Resource):
     try:
       # inserts sale and gets sale id
       dbExecute(
-        ' INSERT INTO tbl_sale (sale_client_id, sale_employee_id, sale_payment_method_installment_id, sale_total_discount_percentage, sale_total_value) VALUES '
-        '   (%s, %s, %s, %s, %s) ',
-        [args['sale_client_id'], args['sale_employee_id'], args['sale_payment_method_installment_id'], args['sale_total_discount_percentage'], args['sale_total_value']],
+        ' INSERT INTO tbl_sale (sale_client_id, sale_employee_id, sale_total_discount_percentage, sale_total_value) VALUES '
+        '   (%s, %s, %s, %s) ',
+        [args['sale_client_id'], args['sale_employee_id'], args['sale_total_discount_percentage'], args['sale_total_value']],
         True, dbObjectIns)
       
       saleIdQuery = dbGetSingle(' SELECT LAST_INSERT_ID() AS sale_id; ', None, True, dbObjectIns)
       
       if not saleIdQuery:
         raise Exception('Exception empty select saleIdQuery after insert from tbl_sale put')
+      
+      # set installments
+      for salePaymentMethodInstallment in args['sale_payment_method_installments']:
+        dbExecute(
+          ' INSERT INTO tbl_sale_has_payment_method_installment (sale_id, payment_method_installment_id, payment_method_value) VALUES (%s, %s, %s); ', 
+          [saleIdQuery['sale_id'], salePaymentMethodInstallment['id'], salePaymentMethodInstallment['value']], True, dbObjectIns)
       
       for product in args['sale_has_products']:
         # set product immutable
@@ -410,7 +422,7 @@ class SaleInfoApi(Resource):
       [os.getenv('SQL_SCHEMA'), 'tbl_sale'])
     
     query['payment_methods'] = dbGetAll(
-      ' SELECT pmi.payment_method_installment_id, pm.payment_method_name, pmi.payment_method_installment_number '
+      ' SELECT pmi.payment_method_installment_id, pm.payment_method_name, pm.payment_method_id, pmi.payment_method_installment_number '
       '   FROM tbl_payment_method pm '
       '   JOIN tbl_payment_method_installment pmi ON pm.payment_method_id = pmi.payment_method_id; ')
     
