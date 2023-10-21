@@ -240,7 +240,6 @@ CREATE TABLE tbl_sale(
 	PRIMARY KEY (sale_id),
     FOREIGN KEY (sale_client_id) REFERENCES tbl_client(client_id),
     FOREIGN KEY (sale_employee_id) REFERENCES tbl_employee(employee_id),
-    FOREIGN KEY (sale_payment_method_installment_id) REFERENCES tbl_payment_method_installment(payment_method_installment_id),
 	CHECK (sale_total_discount_percentage >= 0)
 );
 
