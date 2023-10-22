@@ -396,7 +396,7 @@ class SalesApi(Resource):
       '   JOIN tbl_payment_method_installment pmi ON shpmi.payment_method_installment_id = pmi.payment_method_installment_id '
       '	  JOIN tbl_payment_method pm ON pmi.payment_method_id = pm.payment_method_id '
       + geralFilterScryptNoLimit)
-    
+
     salesSummary = dbGetSingle(sqlScryptNoLimit, geralFilterArgsNoLimit)
     salesQuery = dbGetAll(sqlScrypt, geralFilterArgs)
 
@@ -426,6 +426,21 @@ class SalesApi(Resource):
 
       if args.get('sale_total_value_end'):
         filters.append(f"Valor, até: {toBRCurrency(float(args.get('sale_total_value_end')))}")
+      
+      appliedOrderStr = f"Ordenado em ordem {'ascendente' if orderByAsc else 'decrescente'} por "
+
+      if args['order_by'] == 'sale_id':
+        appliedOrderStr += 'código'
+      elif args['order_by'] == 'sale_creation_date_time':
+        appliedOrderStr += 'data e hora de geração'
+      elif args['order_by'] == 'sale_client_name':
+        appliedOrderStr += 'nome do cliente'
+      elif args['order_by'] == 'sale_status':
+        appliedOrderStr += 'status'
+      elif args['order_by'] == 'sale_total_value':
+        appliedOrderStr += 'valor final'
+      
+      filters.append(appliedOrderStr)
 
       # create
       pdfPath, pdfName = createSalesReport(filters, salesSummary, salesQuery)

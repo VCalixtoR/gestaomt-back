@@ -3,7 +3,7 @@ import os
 
 from pathlib import Path
 from reportlab.platypus import Image, SimpleDocTemplate, Paragraph, PageBreak, Spacer, Table
-from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import inch, mm
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -62,6 +62,23 @@ def createSalesReport(filters, salesSummary, salesQuery):
     splitLongWords=True,
     spaceShrinkage=0.05,
   ))
+  styles.add(ParagraphStyle(
+    name='Normal_LEFT',
+    parent=styles['Normal'],
+    fontName='Helvetica',
+    wordWrap='LTR',
+    alignment=TA_LEFT,
+    fontSize=9,
+    leading=10,
+    textColor=colors.toColor('rgb(54,52,52)'),
+    borderPadding=0,
+    leftIndent=0,
+    rightIndent=0,
+    spaceAfter=0,
+    spaceBefore=0,
+    splitLongWords=True,
+    spaceShrinkage=0.05,
+  ))
 
   # head table
   headLogo = Image(Path.cwd() / 'assets' / 'gestao_miss_teen_logo_side.png')
@@ -81,9 +98,9 @@ def createSalesReport(filters, salesSummary, salesQuery):
     filterData = [['Filtros', ' ']]
     for fpos in range(0, len(filters), 2):
       if fpos+1 < len(filters):
-        filterData.append([Paragraph(filters[fpos], styles['Normal_CENTER']), Paragraph(filters[fpos+1], styles['Normal_CENTER'])])
+        filterData.append([Paragraph(filters[fpos], styles['Normal_LEFT']), Paragraph(filters[fpos+1], styles['Normal_LEFT'])])
       else:
-        filterData.append([Paragraph(filters[fpos], styles['Normal_CENTER'])])
+        filterData.append([Paragraph(filters[fpos], styles['Normal_LEFT'])])
 
   filterTable = Table(filterData, colWidths=[95*mm, 85*mm])
   filterTable.setStyle([
@@ -153,7 +170,7 @@ def createSalesReport(filters, salesSummary, salesQuery):
       Paragraph(toBRCurrency(float(sale['sale_total_value'])), styles['Normal_CENTER'])
     ])
 
-  dataTable = Table(data, colWidths=[10*mm, 22*mm, 17*mm, 27*mm, 27*mm, 57*mm, 20*mm])
+  dataTable = Table(data, colWidths=[9*mm, 21*mm, 17*mm, 27*mm, 27*mm, 57*mm, 22*mm])
   dataTable.setStyle([
     ('FONT', (0,0), (-1,0), 'Helvetica-Bold', 14),
     ('FONT', (0,1), (-1,-1), 'Helvetica', 9),
