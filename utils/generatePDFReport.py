@@ -177,8 +177,8 @@ def createSalesReport(filters, salesSummary, salesQuery):
   elems.append(Spacer(1, 2*mm))
   elems.append(dataTable)
 
-  pdfName = f'SalesReport{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.pdf'
-  pdfPath = f'reports/{pdfName}'
+  pdfName = f'RelatorioVendas{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.pdf'
+  pdfPath = (Path.cwd() / 'reports' / pdfName).__str__()
 
   pdf = SimpleDocTemplate(
     filename=pdfPath,
