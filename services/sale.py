@@ -1,11 +1,11 @@
 import datetime
 from flask import Flask, abort, send_file
 from flask_restful import Resource, Api, reqparse
-import locale
 import traceback
 import os
 
 from utils.dbUtils import *
+from utils.utils import toBRCurrency
 from utils.generatePDFReport import createSalesReport, delayedRemoveReport
 from services.authentication import isAuthTokenValid
 
@@ -406,9 +406,6 @@ class SalesApi(Resource):
       # filters
       filters = []
 
-      # used to adjust currency strings
-      locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
-
       if args.get('sale_id'):
         filters.append(f"Código: {args.get('sale_id')}")
 
@@ -425,10 +422,10 @@ class SalesApi(Resource):
         filters.append(f"Criado, até: {datetime.datetime.strptime(args['sale_creation_date_time_end'], '%Y-%m-%dT%H:%M').strftime('%d/%m/%Y %H:%M')}")
         
       if args.get('sale_total_value_start'):
-        filters.append(f"Valor, de: {locale.currency(float(args.get('sale_total_value_start')), grouping=True)}")
+        filters.append(f"Valor, de: {toBRCurrency(float(args.get('sale_total_value_start')))}")
 
       if args.get('sale_total_value_end'):
-        filters.append(f"Valor, até: {locale.currency(float(args.get('sale_total_value_end')), grouping=True)}")
+        filters.append(f"Valor, até: {toBRCurrency(float(args.get('sale_total_value_end')))}")
 
       # create
       pdfPath, pdfName = createSalesReport(filters, salesSummary, salesQuery)

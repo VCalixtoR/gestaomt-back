@@ -1,5 +1,4 @@
 import datetime
-import locale
 import os
 
 from pathlib import Path
@@ -12,6 +11,7 @@ from reportlab.lib import colors
 from reportlab.pdfgen import canvas
 from threading import Thread
 from time import sleep
+from utils.utils import toBRCurrency
 
 # A4 page size: 210 x 297 mm
 # Custom Canvas class for automatically adding page-numbers
@@ -62,9 +62,6 @@ def createSalesReport(filters, salesSummary, salesQuery):
     splitLongWords=True,
     spaceShrinkage=0.05,
   ))
-
-  # used to adjust currency strings
-  locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 
   # head table
   headLogo = Image(Path.cwd() / 'assets' / 'gestao_miss_teen_logo_side.png')
@@ -118,7 +115,7 @@ def createSalesReport(filters, salesSummary, salesQuery):
     ['Resumo'],
     ['','Crédito', 'Cheque', 'Débito', 'Dinheiro', 'Pix', 'Total'],
     ['Quantidade'] + [str(quant) for quant in quants],
-    ['Valor'] + [locale.currency(value, grouping=True) for value in values],
+    ['Valor'] + [toBRCurrency(value) for value in values],
     ['Percentual da quantidade'] + [(str(round((quant/quants[5])*100))+'%') for quant in quants],
     ['Percentual do valor'] + [(str(round((value/values[5])*100))+'%') for value in values]
   ]
@@ -144,7 +141,7 @@ def createSalesReport(filters, salesSummary, salesQuery):
     paymentMethodValues = sale['payment_method_values'].split(',')
     
     for payPos in range(0, len(paymentMethodNames)):
-      payments = payments + ('<br/>' if len(payments) > 0 else '') + f"{paymentMethodNames[payPos]} ({paymentMethodInstallmentNumbers[payPos]} X {locale.currency(float(paymentMethodValues[payPos]), grouping=True)})"
+      payments = payments + ('<br/>' if len(payments) > 0 else '') + f"{paymentMethodNames[payPos]} ({paymentMethodInstallmentNumbers[payPos]} X {toBRCurrency(float(paymentMethodValues[payPos]))})"
 
     data.append([
       Paragraph(str(sale['sale_id']), styles['Normal_CENTER']),
@@ -153,7 +150,7 @@ def createSalesReport(filters, salesSummary, salesQuery):
       Paragraph(sale['sale_client_name'], styles['Normal_CENTER']),
       Paragraph(sale['sale_employee_name'], styles['Normal_CENTER']),
       Paragraph(payments, styles['Normal_CENTER']),
-      Paragraph(locale.currency(float(sale['sale_total_value']), grouping=True), styles['Normal_CENTER'])
+      Paragraph(toBRCurrency(float(sale['sale_total_value'])), styles['Normal_CENTER'])
     ])
 
   dataTable = Table(data, colWidths=[10*mm, 22*mm, 17*mm, 27*mm, 27*mm, 57*mm, 20*mm])
