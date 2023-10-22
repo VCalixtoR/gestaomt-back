@@ -177,8 +177,13 @@ def createSalesReport(filters, salesSummary, salesQuery):
   elems.append(Spacer(1, 2*mm))
   elems.append(dataTable)
 
+  reportsDir = Path.cwd() / 'reports'
+  if not os.path.isdir(reportsDir):
+    print('# Reports directory not found, creating')
+    os.mkdir(reportsDir)
+
   pdfName = f'RelatorioVendas{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.pdf'
-  pdfPath = (Path.cwd() / 'reports' / pdfName).__str__()
+  pdfPath = (reportsDir / pdfName).__str__()
 
   pdf = SimpleDocTemplate(
     filename=pdfPath,
