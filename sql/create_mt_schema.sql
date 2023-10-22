@@ -1,4 +1,4 @@
-CREATE SCHEMA gestao_mt;
+CREATE SCHEMA IF NOT EXISTS gestao_mt;
 USE gestao_mt;
 
 CREATE TABLE tbl_person (

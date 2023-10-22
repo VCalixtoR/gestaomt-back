@@ -1,9 +1,9 @@
-import mysql.connector
+from mysql import connector
 import os
 
 def dbCheckCreateMySqlSchemaTables():
 
-  dbConnection = mysql.connector.connect(
+  dbConnection = connector.connect(
     host = os.getenv('SQL_HOST'),
     port = os.getenv('SQL_PORT'),
     user = os.getenv('SQL_USER'),
@@ -28,6 +28,7 @@ def dbCheckCreateMySqlSchemaTables():
   if not schemaFound:
     print('# Schema ' + str(os.getenv('SQL_SCHEMA')) + ' not found! creating schema and tables')
     dbCreate(dbConnection, dbCursor)
+    dbConnection.commit()
     print('# Schema ' + str(os.getenv('SQL_SCHEMA')) + ' and tables created')
   else:
     print('# Schema ' + str(os.getenv('SQL_SCHEMA')) + ' is in database')
@@ -37,7 +38,7 @@ def dbCheckCreateMySqlSchemaTables():
 
 def startGetDbObject():
 
-  dbConnection = mysql.connector.connect(
+  dbConnection = connector.connect(
     host = os.getenv('SQL_HOST'),
     port = os.getenv('SQL_PORT'),
     user = os.getenv('SQL_USER'),
@@ -234,7 +235,7 @@ def dbGetSqlFilterScrypt(argsObj, groupByCollumns=None, orderByCollumns=None, or
 
 def getSqlScrypt(name):
 
-  textFile = open('./sql/' + name + '.sql', 'r')
+  textFile = open('./sql/' + name + '.sql', mode='r', encoding="utf8")
   strFile = textFile.read()
   textFile.close()
 
@@ -244,7 +245,7 @@ def dbCreate(dbConnection, dbCursor):
 
   dbCursor.execute('create schema ' + str(os.getenv('SQL_SCHEMA')))
 
-  dbConnection = mysql.connector.connect(
+  dbConnection = connector.connect(
     host = os.getenv('SQL_HOST'),
     port = os.getenv('SQL_PORT'),
     user = os.getenv('SQL_USER'),

@@ -8,3 +8,5 @@ public-key.pem
 .env.homol
 
 *.bak
+
+reports/*

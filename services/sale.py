@@ -1,10 +1,12 @@
 import datetime
-from flask import Flask, abort
+from flask import Flask, abort, send_file
 from flask_restful import Resource, Api, reqparse
+import locale
 import traceback
 import os
 
 from utils.dbUtils import *
+from utils.generatePDFReport import createSalesReport, delayedRemoveReport
 from services.authentication import isAuthTokenValid
 
 class SaleApi(Resource):
@@ -306,8 +308,8 @@ class SalesApi(Resource):
       
     argsParser = reqparse.RequestParser()
     argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
-    argsParser.add_argument('limit', location='args', type=int, help='query limit, required', required=True)
-    argsParser.add_argument('offset', location='args', type=int, help='query offset, required', required=True)
+    argsParser.add_argument('limit', location='args', type=int, help='query limit')
+    argsParser.add_argument('offset', location='args', type=int, help='query offset')
     argsParser.add_argument('order_by', location='args', type=str, help='query orderby', required=True)
     argsParser.add_argument('order_by_asc', location='args', type=str, help='query orderby ascendant', required=True)
     argsParser.add_argument('sale_id', location='args', type=int, help='sale id')
@@ -317,6 +319,7 @@ class SalesApi(Resource):
     argsParser.add_argument('sale_creation_date_time_end', location='args', type=str, help='end of sale creation interval')
     argsParser.add_argument('sale_total_value_start', location='args', type=str, help='start value of sale')
     argsParser.add_argument('sale_total_value_end', location='args', type=str, help='end value of sale')
+    argsParser.add_argument('generate_pdf', location='args', type=str, help='if the expected return is a file')
     args = argsParser.parse_args()
     
     isValid, returnMessage = isAuthTokenValid(args)
@@ -397,12 +400,51 @@ class SalesApi(Resource):
     salesSummary = dbGetSingle(sqlScryptNoLimit, geralFilterArgsNoLimit)
     salesQuery = dbGetAll(sqlScrypt, geralFilterArgs)
 
+    # pdf creation
+    if args.get('generate_pdf') == 'true' or args.get('generate_pdf') == True:
+
+      # filters
+      filters = []
+
+      # used to adjust currency strings
+      locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+
+      if args.get('sale_id'):
+        filters.append(f"Código: {args.get('sale_id')}")
+
+      if args.get('sale_client_name'):
+        filters.append(f"Nome do cliente: {args.get('sale_client_name')}")
+
+      if args.get('sale_status'):
+        filters.append(f"Status: {args.get('sale_status')}")
+
+      if args.get('sale_creation_date_time_start'):
+        filters.append(f"Criado, de: {datetime.datetime.strptime(args['sale_creation_date_time_start'], '%Y-%m-%dT%H:%M').strftime('%d/%m/%Y %H:%M')}")
+
+      if args.get('sale_creation_date_time_end'):
+        filters.append(f"Criado, até: {datetime.datetime.strptime(args['sale_creation_date_time_end'], '%Y-%m-%dT%H:%M').strftime('%d/%m/%Y %H:%M')}")
+        
+      if args.get('sale_total_value_start'):
+        filters.append(f"Valor, de: {locale.currency(float(args.get('sale_total_value_start')), grouping=True)}")
+
+      if args.get('sale_total_value_end'):
+        filters.append(f"Valor, até: {locale.currency(float(args.get('sale_total_value_end')), grouping=True)}")
+
+      # create
+      pdfPath, pdfName = createSalesReport(filters, salesSummary, salesQuery)
+
+      # remove the file after(10 minutes)
+      delayedRemoveReport(pdfPath)
+
+      # sends
+      return send_file(pdfPath, as_attachment=True, download_name=pdfName)
+
     if not salesSummary or not salesQuery:
       return { 'total_quantity': 0, 'sales': [] }, 200
 
     for saleRow in salesQuery:
       saleRow['sale_creation_date_time'] = str(saleRow['sale_creation_date_time'])
-    
+
     return { 'total_quantity': salesSummary['total_quantity'], 'sales': salesQuery, 'summary': salesSummary }, 200
   
 class SaleInfoApi(Resource):

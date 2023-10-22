@@ -34,8 +34,8 @@ loadGenerateKeys()
 # loads flask API
 app = Flask(__name__)
 CORS(app, origins='*',
-    headers=['Content-Type', 'Authorization'],
-    expose_headers='Authorization')
+  headers=['Content-Type', 'Authorization', 'Content-Disposition'],
+  expose_headers=['Authorization', 'Content-Disposition'])
 
 api = Api(app)
 api.add_resource(AuthWithLoginApi, '/auth-with-login')
