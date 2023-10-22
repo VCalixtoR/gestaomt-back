@@ -170,7 +170,7 @@ def createSalesReport(filters, salesSummary, salesQuery):
       Paragraph(toBRCurrency(float(sale['sale_total_value'])), styles['Normal_CENTER'])
     ])
 
-  dataTable = Table(data, colWidths=[9*mm, 21*mm, 17*mm, 27*mm, 27*mm, 57*mm, 22*mm])
+  dataTable = Table(data, colWidths=[12*mm, 21*mm, 17*mm, 25*mm, 25*mm, 58*mm, 22*mm])
   dataTable.setStyle([
     ('FONT', (0,0), (-1,0), 'Helvetica-Bold', 14),
     ('FONT', (0,1), (-1,-1), 'Helvetica', 9),
