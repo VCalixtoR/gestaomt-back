@@ -1,9 +1,10 @@
-from flask import Flask, abort
+from flask import Flask, abort, send_file
 from flask_restful import Resource, Api, reqparse
 import datetime
 import traceback
 
 from utils.dbUtils import *
+from utils.generatePDFReport import createConditionalsReport, delayedRemoveReport
 from services.authentication import isAuthTokenValid
 
 class ConditionalApi(Resource):
@@ -269,8 +270,8 @@ class ConditionalsApi(Resource):
       
     argsParser = reqparse.RequestParser()
     argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
-    argsParser.add_argument('limit', location='args', type=int, help='query limit, required', required=True)
-    argsParser.add_argument('offset', location='args', type=int, help='query offset, required', required=True)
+    argsParser.add_argument('limit', location='args', type=int, help='query limit')
+    argsParser.add_argument('offset', location='args', type=int, help='query offset')
     argsParser.add_argument('order_by', location='args', type=str, help='query orderby', required=True)
     argsParser.add_argument('order_by_asc', location='args', type=str, help='query orderby ascendant', required=True)
     argsParser.add_argument('conditional_id', location='args', type=int, help='conditional id')
@@ -278,6 +279,7 @@ class ConditionalsApi(Resource):
     argsParser.add_argument('conditional_status', location='args', type=str, help='conditional status')
     argsParser.add_argument('conditional_creation_date_time_start', location='args', type=str, help='start of conditional creation interval')
     argsParser.add_argument('conditional_creation_date_time_end', location='args', type=str, help='end of conditional creation interval')
+    argsParser.add_argument('generate_pdf', location='args', type=str, help='if the expected return is a file')
     args = argsParser.parse_args()
     
     isValid, returnMessage = isAuthTokenValid(args)
@@ -333,6 +335,47 @@ class ConditionalsApi(Resource):
     
     conditionalsSummary = dbGetSingle(sqlScryptNoCount, geralFilterArgsNoLimit)
     conditionalsQuery = dbGetAll(sqlScrypt, geralFilterArgs)
+    
+    # pdf creation
+    if args.get('generate_pdf') == 'true' or args.get('generate_pdf') == True:
+
+      # filters
+      filters = []
+
+      if args.get('conditional_id'):
+        filters.append(f"Código: {args.get('conditional_id')}")
+
+      if args.get('conditional_client_name'):
+        filters.append(f"Nome do cliente: {args.get('conditional_client_name')}")
+
+      if args.get('conditional_status'):
+        filters.append(f"Status: {args.get('conditional_status')}")
+
+      if args.get('conditional_creation_date_time_start'):
+        filters.append(f"Criado, de: {datetime.datetime.strptime(args['conditional_creation_date_time_start'], '%Y-%m-%dT%H:%M').strftime('%d/%m/%Y %H:%M')}")
+
+      if args.get('conditional_creation_date_time_end'):
+        filters.append(f"Criado, até: {datetime.datetime.strptime(args['conditional_creation_date_time_end'], '%Y-%m-%dT%H:%M').strftime('%d/%m/%Y %H:%M')}")
+      
+      appliedOrderStr = f"Ordenado em ordem {'ascendente' if orderByAsc else 'decrescente'} por "
+
+      if args['order_by'] == 'conditional_id':
+        appliedOrderStr += 'código'
+      elif args['order_by'] == 'conditional_creation_date_time':
+        appliedOrderStr += 'data e hora de geração'
+      elif args['order_by'] == 'conditional_client_name':
+        appliedOrderStr += 'nome do cliente'
+      elif args['order_by'] == 'conditional_status':
+        appliedOrderStr += 'status'
+      
+      filters.append(appliedOrderStr)
+
+      # create and remove the pdf file after(1 minute)
+      pdfPath, pdfName = createConditionalsReport(filters, conditionalsSummary, conditionalsQuery)
+      delayedRemoveReport(pdfPath)
+
+      # sends
+      return send_file(pdfPath, as_attachment=True, download_name=pdfName)
 
     if not conditionalsSummary or not conditionalsQuery:
       return { 'total_quantity': 0, 'conditionals': [] }, 200

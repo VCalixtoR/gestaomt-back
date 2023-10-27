@@ -14,6 +14,9 @@ from time import sleep
 from utils.utils import toBRCurrency
 
 # A4 page size: 210 x 297 mm
+
+##### Objects and utilities #####
+
 # Custom Canvas class for automatically adding page-numbers
 class MyCanvas(canvas.Canvas):
   def __init__(self, *args, **kwargs):
@@ -41,7 +44,19 @@ class MyCanvas(canvas.Canvas):
     # saving
     canvas.Canvas.save(self)
 
-def createSalesReport(filters, salesSummary, salesQuery):
+# creates a thread to removes a report after 1 minute
+def delayedRemoveReport(filePath):
+  Thread(target=threadDelayedRemoveReport, args=(filePath,)).start()
+
+# removes a report after 1 minute
+def threadDelayedRemoveReport(filePath):
+  sleep(60)
+  os.remove(filePath)
+
+##### General functions #####
+
+# get used personalized and common styles
+def getPersonalizedStyles():
 
   # creates a centered font style used in paragraphs
   styles = getSampleStyleSheet()
@@ -79,10 +94,31 @@ def createSalesReport(filters, salesSummary, salesQuery):
     splitLongWords=True,
     spaceShrinkage=0.05,
   ))
+  styles.add(ParagraphStyle(
+    name='Title_CENTER',
+    parent=styles['Normal'],
+    fontName='Helvetica-Bold',
+    wordWrap='LTR',
+    alignment=TA_CENTER,
+    fontSize=14,
+    leading=10,
+    textColor=colors.black,
+    borderPadding=0,
+    leftIndent=0,
+    rightIndent=0,
+    spaceAfter=0,
+    spaceBefore=0,
+    splitLongWords=True,
+    spaceShrinkage=0.05,
+  ))
 
-  # head table
+  return styles
+
+# get head table
+def getReportHead(reportName):
+
   headLogo = Image(Path.cwd() / 'assets' / 'gestao_miss_teen_logo_side.png')
-  headData = [[headLogo, 'Relatório de vendas']]
+  headData = [[headLogo, reportName]]
 
   headTable = Table(headData, colWidths=[70*mm, 110*mm])
   headTable.setStyle([
@@ -92,18 +128,24 @@ def createSalesReport(filters, salesSummary, salesQuery):
     ('TEXTCOLOR', (0,1), (-1,-1), colors.toColor('rgb(54,52,52)'))
   ])
 
-  # filter table
-  filterData = [['Sem Filtros', ' ']]
-  if(filters and len(filters) > 0):
-    filterData = [['Filtros', ' ']]
-    for fpos in range(0, len(filters), 2):
-      if fpos+1 < len(filters):
-        filterData.append([Paragraph(filters[fpos], styles['Normal_LEFT']), Paragraph(filters[fpos+1], styles['Normal_LEFT'])])
-      else:
-        filterData.append([Paragraph(filters[fpos], styles['Normal_LEFT'])])
+  return headTable
 
-  filterTable = Table(filterData, colWidths=[95*mm, 85*mm])
-  filterTable.setStyle([
+# get table box with two collumns, used by filters
+def getTwoColumnBoxTable(data, titleWithContent, titleWithoutContent):
+
+  styles = getPersonalizedStyles()
+
+  boxTableData = [[titleWithoutContent, ' ']]
+  if(data and len(data) > 0):
+    boxTableData = [[titleWithContent, ' ']]
+    for fpos in range(0, len(data), 2):
+      if fpos+1 < len(data):
+        boxTableData.append([Paragraph(data[fpos], styles['Normal_LEFT']), Paragraph(data[fpos+1], styles['Normal_LEFT'])])
+      else:
+        boxTableData.append([Paragraph(data[fpos], styles['Normal_LEFT'])])
+  
+  boxTable = Table(boxTableData, colWidths=[95*mm, 85*mm])
+  boxTable.setStyle([
     ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ('ALIGN', (0,0), (-1,-1), 'LEFT'),
     ('FONT', (0,0), (-1,0), 'Helvetica-Bold', 14),
@@ -111,7 +153,99 @@ def createSalesReport(filters, salesSummary, salesQuery):
     ('TEXTCOLOR', (0,1), (-1,-1), colors.toColor('rgb(54,52,52)'))
   ])
 
-  # summary table
+  return boxTable
+
+# get table with the sizes and numbers of columns specified in colWidths
+def getMultiColumnTable(data, colWidths):
+
+  table = Table(data, colWidths=colWidths)
+  table.setStyle([
+    ('FONT', (0,0), (-1,0), 'Helvetica-Bold', 14),
+    ('FONT', (0,1), (-1,-1), 'Helvetica', 9),
+    ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ('ALIGN', (0,0), (-1,0), 'LEFT'),
+    ('ALIGN', (0,1), (-1,-1), 'CENTER'),
+    ('GRID', (0,1), (-1,-1), 1, colors.toColor('rgb(241,170,167)')),
+    ('BACKGROUND', (0,1), (-1,1), colors.toColor('rgb(241,170,167)')),
+    ('TEXTCOLOR', (0,1), (-1,-1), colors.toColor('rgb(54,52,52)'))
+  ])
+  for i in range(2, len(data)):
+    if i % 2 == 1:
+      table.setStyle([('BACKGROUND', (0, i), (-1, i), colors.toColor('rgb(249,229,228)'))])
+
+  return table
+
+# creates a report given its name and elements, returns its path
+def createReportPDF(pdfName, elems):
+
+  # create reports dir if not exists
+  reportsDir = Path.cwd() / 'reports'
+  if not os.path.isdir(reportsDir):
+    print('# Reports directory not found, creating')
+    os.mkdir(reportsDir)
+
+  # crates pdf path
+  pdfPath = (reportsDir / pdfName).__str__()
+
+  # configure and build pdf
+  pdf = SimpleDocTemplate(
+    filename=pdfPath,
+    pagesize=A4,
+    leftMargin=0.5*inch,
+    rightMargin=0.5*inch,
+    topMargin=0.5*inch,
+    bottomMargin=0.5*inch
+  )
+  pdf.build(elems, canvasmaker=MyCanvas)
+
+  return pdfPath
+
+##### Specific functions #####
+
+# get filter table
+def getFilterTable(filters):
+  return getTwoColumnBoxTable(filters, 'Filtros', 'Sem Filtros')
+
+# get conditionals summary table
+def getConditionalsSummaryTable(conditionalsSummary):
+
+  quants = [
+    int(conditionalsSummary['canceled_quantity']),
+    int(conditionalsSummary['returned_quantity']),
+    int(conditionalsSummary['pending_quantity']),
+    int(conditionalsSummary['total_quantity'])
+  ]
+
+  summData = [
+    ['Resumo'],
+    ['','Cancelado', 'Devolvido', 'Pendente', 'Total'],
+    ['Quantidade'] + [str(quant) for quant in quants],
+    ['Percentual da quantidade'] + [(str(round((quant/quants[3])*100))+'%') for quant in quants]
+  ]
+
+  return getMultiColumnTable(summData, [60*mm, 30*mm, 30*mm, 30*mm, 30*mm])
+
+# get conditionals data table
+def getConditionalsDataTable(conditionalsQuery):
+
+  styles = getPersonalizedStyles()
+
+  data = [['Condicionais'],['Cod', 'Data', 'Status', 'Cliente', 'Vendedor']]
+  for conditional in conditionalsQuery:
+
+    data.append([
+      Paragraph(str(conditional['conditional_id']), styles['Normal_CENTER']),
+      Paragraph(conditional['conditional_creation_date_time'].strftime("%d/%m/%Y"), styles['Normal_CENTER']),
+      Paragraph(conditional['conditional_status'], styles['Normal_CENTER']),
+      Paragraph(conditional['conditional_client_name'], styles['Normal_CENTER']),
+      Paragraph(conditional['conditional_employee_name'], styles['Normal_CENTER'])
+    ])
+
+  return getMultiColumnTable(data, [36*mm, 36*mm, 36*mm, 36*mm, 36*mm])
+
+# get sales summary table
+def getSalesSummaryTable(salesSummary):
+  
   quants = [
     int(salesSummary['credito_quantity']),
     int(salesSummary['cheque_quantity']),
@@ -136,19 +270,14 @@ def createSalesReport(filters, salesSummary, salesQuery):
     ['Percentual da quantidade'] + [(str(round((quant/quants[5])*100))+'%') for quant in quants],
     ['Percentual do valor'] + [(str(round((value/values[5])*100))+'%') for value in values]
   ]
-  summTable = Table(summData, colWidths=[48*mm, 22*mm, 22*mm, 22*mm, 22*mm, 22*mm, 22*mm])
-  summTable.setStyle([
-    ('FONT', (0,0), (-1,0), 'Helvetica-Bold', 14),
-    ('FONT', (0,1), (-1,-1), 'Helvetica', 9),
-    ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-    ('ALIGN', (0,0), (-1,0), 'LEFT'),
-    ('ALIGN', (0,1), (-1,-1), 'CENTER'),
-    ('GRID', (0,1), (-1,-1), 1, colors.toColor('rgb(241,170,167)')),
-    ('BACKGROUND', (0,1), (-1,1), colors.toColor('rgb(241,170,167)')),
-    ('TEXTCOLOR', (0,1), (-1,-1), colors.toColor('rgb(54,52,52)'))
-  ])
 
-  # data table
+  return getMultiColumnTable(summData, [48*mm, 22*mm, 22*mm, 22*mm, 22*mm, 22*mm, 22*mm])
+
+# get sales data table
+def getSalesDataTable(salesQuery):
+
+  styles = getPersonalizedStyles()
+
   data = [['Vendas'],['Cod', 'Data', 'Confirmado', 'Cliente', 'Vendedor', 'Formas de Pagamento', 'Valor']]
   for sale in salesQuery:
 
@@ -170,55 +299,78 @@ def createSalesReport(filters, salesSummary, salesQuery):
       Paragraph(toBRCurrency(float(sale['sale_total_value'])), styles['Normal_CENTER'])
     ])
 
-  dataTable = Table(data, colWidths=[12*mm, 21*mm, 17*mm, 25*mm, 25*mm, 58*mm, 22*mm])
-  dataTable.setStyle([
-    ('FONT', (0,0), (-1,0), 'Helvetica-Bold', 14),
-    ('FONT', (0,1), (-1,-1), 'Helvetica', 9),
-    ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-    ('ALIGN', (0,0), (-1,0), 'LEFT'),
-    ('ALIGN', (0,1), (-1,-1), 'CENTER'),
-    ('GRID', (0,1), (-1,-1), 1, colors.toColor('rgb(241,170,167)')),
-    ('BACKGROUND', (0,1), (-1,1), colors.toColor('rgb(241,170,167)')),
-    ('TEXTCOLOR', (0,1), (-1,-1), colors.toColor('rgb(54,52,52)'))
-  ])
-  for i in range(2, len(data)):
-    if i % 2 == 0:
-      dataTable.setStyle([('BACKGROUND', (0, i), (-1, i), colors.toColor('rgb(255,245,244)'))])
+  return getMultiColumnTable(data, [12*mm, 21*mm, 17*mm, 25*mm, 25*mm, 58*mm, 22*mm])
+
+##### Specific report creation functions #####
+
+# conditionals
+def createConditionalsReport(filters, conditionalsSummary, conditionalsQuery):
 
   elems = []
+  styles = getPersonalizedStyles()
+
+  # get head and filter tables
+  headTable = getReportHead('Relatório de condicionais')
+  filterTable = getFilterTable(filters)
+
+  # appends pdf initial elements
   elems.append(headTable)
   elems.append(Spacer(1, 1*mm))
   elems.append(filterTable)
   elems.append(Spacer(1, 2*mm))
-  elems.append(summTable)
-  elems.append(Spacer(1, 2*mm))
-  elems.append(dataTable)
 
-  reportsDir = Path.cwd() / 'reports'
-  if not os.path.isdir(reportsDir):
-    print('# Reports directory not found, creating')
-    os.mkdir(reportsDir)
+  # if not find conditionals, append not find message
+  if not conditionalsSummary or not conditionalsQuery or len(conditionalsQuery) == 0:
+    elems.append(Spacer(1, 5*mm))
+    elems.append(Paragraph('Não foram encontradas condicionais com estes filtros', styles['Title_CENTER'])),
+  
+  # if find, append summary and data
+  else:
+    summTable = getConditionalsSummaryTable(conditionalsSummary)
+    dataTable = getConditionalsDataTable(conditionalsQuery)
 
-  pdfName = f'RelatorioVendas{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.pdf'
-  pdfPath = (reportsDir / pdfName).__str__()
+    elems.append(summTable)
+    elems.append(Spacer(1, 2*mm))
+    elems.append(dataTable)
 
-  pdf = SimpleDocTemplate(
-    filename=pdfPath,
-    pagesize=A4,
-    leftMargin=0.5*inch,
-    rightMargin=0.5*inch,
-    topMargin=0.5*inch,
-    bottomMargin=0.5*inch
-  )
-  pdf.build(elems, canvasmaker=MyCanvas)
+  # creates pdf name and the pdf itself
+  pdfName = f'RelatorioCondicionais{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.pdf'
+  pdfPath = createReportPDF(pdfName, elems)
 
   return pdfPath, pdfName
 
-# creates a thread to removes a report after 10 minutes
-def delayedRemoveReport(filePath):
-  Thread(target=threadDelayedRemoveReport, args=(filePath,)).start()
+# sales
+def createSalesReport(filters, salesSummary, salesQuery):
 
-# removes a report after 10 minutes
-def threadDelayedRemoveReport(filePath):
-  sleep(600)
-  os.remove(filePath)
+  elems = []
+  styles = getPersonalizedStyles()
+
+  # get head and filter tables
+  headTable = getReportHead('Relatório de vendas')
+  filterTable = getFilterTable(filters)
+
+  # appends pdf initial elements
+  elems.append(headTable)
+  elems.append(Spacer(1, 1*mm))
+  elems.append(filterTable)
+  elems.append(Spacer(1, 2*mm))
+
+  # if not find sales, append not find message
+  if not salesSummary or not salesQuery or len(salesQuery) == 0:
+    elems.append(Spacer(1, 5*mm))
+    elems.append(Paragraph('Não foram encontradas vendas com estes filtros', styles['Title_CENTER'])),
+  
+  # if find, append summary and data
+  else:
+    summTable = getSalesSummaryTable(salesSummary)
+    dataTable = getSalesDataTable(salesQuery)
+
+    elems.append(summTable)
+    elems.append(Spacer(1, 2*mm))
+    elems.append(dataTable)
+
+  # creates pdf name and the pdf itself
+  pdfName = f'RelatorioVendas{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.pdf'
+  pdfPath = createReportPDF(pdfName, elems)
+
+  return pdfPath, pdfName

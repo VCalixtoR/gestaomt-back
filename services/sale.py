@@ -442,10 +442,8 @@ class SalesApi(Resource):
       
       filters.append(appliedOrderStr)
 
-      # create
+      # create and remove the pdf file after(1 minute)
       pdfPath, pdfName = createSalesReport(filters, salesSummary, salesQuery)
-
-      # remove the file after(10 minutes)
       delayedRemoveReport(pdfPath)
 
       # sends
