@@ -1,9 +1,11 @@
+import datetime
 import traceback
 
-from flask import Flask, abort, request
+from flask import Flask, abort, request, send_file
 from flask_restful import Resource, Api, reqparse
 
 from utils.dbUtils import *
+from utils.generatePDFReport import createClientsReport, delayedRemoveReport
 from services.authentication import isAuthTokenValid
 
 def formatGroupedClientContacts(contactIds, contactTypes, contactValues):
@@ -375,6 +377,7 @@ class ClientsApi(Resource):
     argsParser.add_argument('children_birth_month_day_end', location='args', type=str, help='end client children birth day and month')
     argsParser.add_argument('last_sale_date_start', location='args', type=str, help='start for last sale date')
     argsParser.add_argument('last_sale_date_end', location='args', type=str, help='end for last sale date')
+    argsParser.add_argument('generate_pdf', location='args', type=str, help='if the expected return is a file')
     args = argsParser.parse_args()
     
     isValid, returnMessage = isAuthTokenValid(args)
@@ -382,12 +385,12 @@ class ClientsApi(Resource):
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
 
     if args.get('only_client_names_cpfs') and args['only_client_names_cpfs'].lower() in ['true', '1']:
-      clientSqlQuery = dbGetAll(
+      clientQuery = dbGetAll(
         ' SELECT c.client_id, p.person_name AS client_name, p.person_cpf AS client_cpf '
         '   FROM tbl_person p '
         '   JOIN tbl_client c ON p.person_id = c.client_id ')
       
-      return { 'clients': clientSqlQuery }
+      return { 'clients': clientQuery }
 
     if args.get('children_birth_month_day_start'):
       splitedDM = args['children_birth_month_day_start'].split('-')
@@ -505,13 +508,67 @@ class ClientsApi(Resource):
       '   ) AS csale ON c.client_id = csale.sale_client_id '
       + geralFilterScryptNoLimit)
 
-    clientSqlQuery = dbGetAll(geralSqlScrypt, contactFilterArgs + childrenFilterArgs + geralFilterArgs)
-    countSqlQuery = dbGetSingle(countSqlScrypt, contactFilterArgs + childrenFilterArgs + geralFilterArgsNoLimit)
+    clientQuery = dbGetAll(geralSqlScrypt, contactFilterArgs + childrenFilterArgs + geralFilterArgs)
+    countQuery = dbGetSingle(countSqlScrypt, contactFilterArgs + childrenFilterArgs + geralFilterArgsNoLimit)
 
-    if not clientSqlQuery or not countSqlQuery:
+     # pdf creation
+    if args.get('generate_pdf') == 'true' or args.get('generate_pdf') == True:
+
+      # filters
+      filters = []
+
+      if args.get('client_name'):
+        filters.append(f"Nome: {args.get('client_name')}")
+
+      if args.get('client_whatsapp'):
+        filters.append(f"Whatsapp: {args.get('client_whatsapp')}")
+
+      if args.get('client_classification'):
+        filters.append(f"Classificação: {args.get('client_classification')}")
+
+      if args.get('children_name'):
+        filters.append(f"Nome do filho: {args.get('children_name')}")
+
+      if args.get('children_birth_month_day_start'):
+        filters.append(f"Mês e dia de aniversário, de: {args.get('children_birth_month_day_start').replace('-','/')}")
+      
+      if args.get('children_birth_month_day_end'):
+        filters.append(f"Mês e dia de aniversário, até: {args.get('children_birth_month_day_end').replace('-','/')}")
+
+      if args.get('last_sale_date_start'):
+        lastSaleDateStart = datetime.datetime.strptime(args.get('last_sale_date_start'), '%Y-%m-%dT%H:%M').strftime("%d/%m/%Y %H:%M:%S")
+        filters.append(f"Data de última venda, de: {lastSaleDateStart}")
+      
+      if args.get('last_sale_date_end'):
+        lastSaleDateEnd = datetime.datetime.strptime(args.get('last_sale_date_end'), '%Y-%m-%dT%H:%M').strftime("%d/%m/%Y %H:%M:%S")
+        filters.append(f"Data de última venda, até: {lastSaleDateEnd}")
+      
+      appliedOrderStr = f"Ordenado em ordem {'ascendente' if orderByAsc else 'decrescente'} por "
+
+      if args['order_by'] == 'person_name':
+        appliedOrderStr += 'nome'
+      elif args['order_by'] == 'last_sale_date':
+        appliedOrderStr += 'data de última compra'
+      elif args['order_by'] == 'last_sale_date':
+        appliedOrderStr += 'data de última compra'
+      elif args['order_by'] == 'last_sale_total_value':
+        appliedOrderStr += 'valor de última compra'
+      elif args['order_by'] == 'client_classification':
+        appliedOrderStr += 'classificação'
+      
+      filters.append(appliedOrderStr)
+
+      # create and remove the pdf file after(1 minute)
+      pdfPath, pdfName = createClientsReport(filters, clientQuery)
+      delayedRemoveReport(pdfPath)
+
+      # sends
+      return send_file(pdfPath, as_attachment=True, download_name=pdfName)
+
+    if not clientQuery or not countQuery:
       return { 'count_clients': 0, 'clients': [] }, 200
     
-    for clientRow in clientSqlQuery:
+    for clientRow in clientQuery:
       
       if clientRow['client_birth_date']:
         clientRow['client_birth_date'] = str(clientRow['client_birth_date'])
@@ -539,4 +596,4 @@ class ClientsApi(Resource):
       del clientRow['client_children_product_size_ids']
       del clientRow['client_children_product_size_names']
     
-    return { 'count_clients': countSqlQuery['countcli'], 'clients': clientSqlQuery }, 200
+    return { 'count_clients': countQuery['countcli'], 'clients': clientQuery }, 200

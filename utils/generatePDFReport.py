@@ -228,6 +228,49 @@ def createReportPDF(pdfName, elems):
 def getFilterTable(filters):
   return getTwoColumnBoxTable(filters, 'Filtros', 'Sem Filtros')
 
+# get clients data table
+def getClientsDataTable(clientsQuery):
+
+  styles = getPersonalizedStyles()
+  data = [[
+    'Nome', 
+    Paragraph('Data última<br/>compra', styles['Normal_CENTER']), 
+    Paragraph('Valor última compra', styles['Normal_CENTER']), 
+    'Classificação', 
+    'Contatos', 
+    'Filhos'
+  ]]
+  
+  for client in clientsQuery:
+
+    # client
+    contactValues = client['client_contact_values'].replace(',', '<br/>') if client['client_contact_values'] else ''
+    children = ''
+
+    if client['client_children_names']:
+      childrenNames = client['client_children_names'].split(',')
+      childrenBirthDates = client['client_children_birth_dates'].split(',')
+      childrenSizes = client['client_children_product_size_names'].split(',')
+
+      for childPos in range(0, len(childrenNames)):
+        
+        childBirthDate = ''
+        if childrenBirthDates[childPos] and childrenBirthDates[childPos] != 'NULL':
+          childBirthDate = datetime.datetime.strptime(childrenBirthDates[childPos], '%Y-%m-%d').strftime('%d/%m')
+        
+        children = children + ('<br/>' if childPos > 0 else '') + f"{childrenNames[childPos]} {childBirthDate} Tam:{childrenSizes[childPos]}"
+
+    data.append([
+      Paragraph(client['client_name'], styles['Normal_CENTER']),
+      Paragraph(client['last_sale_date'].strftime("%d/%m/%Y") if client['last_sale_date'] else '', styles['Normal_CENTER']),
+      Paragraph(toBRCurrency(client['last_sale_total_value']) if client['last_sale_total_value'] else '', styles['Normal_CENTER']),
+      Paragraph(client['client_classification'], styles['Normal_CENTER']),
+      Paragraph(contactValues, styles['Normal_CENTER']),
+      Paragraph(children, styles['Normal_CENTER'])
+    ])
+
+  return getMultiColumnTable(data, [40*mm, 23*mm, 23*mm, 24*mm, 30*mm, 60*mm])
+
 # get conditionals summary table
 def getConditionalsSummaryTable(conditionalsSummary):
 
@@ -381,6 +424,33 @@ def getSalesDataTable(salesQuery):
   return getMultiColumnTable(data, [16*mm, 21*mm, 17*mm, 29*mm, 29*mm, 62*mm, 26*mm])
 
 ##### Specific report creation functions #####
+
+# clients
+def createClientsReport(filters, clientsQuery):
+
+  # appends pdf initial elements
+  elems = []
+  elems.append(getReportHead('Relatório de clientes'))
+  elems.append(Spacer(1, 2*mm))
+  elems.append(getFilterTable(filters))
+
+  # if not find clients, append not find message
+  if not clientsQuery or len(clientsQuery) == 0:
+    elems.append(Spacer(1, 4*mm))
+    elems.append(getTitle('Não foram encontrados clientes com estes filtros', 'Title_CENTER')),
+  
+  # if find, append data
+  else:
+    elems.append(Spacer(1, 2*mm))
+    elems.append(getTitle('Clientes'))
+    elems.append(Spacer(1, 2*mm))
+    elems.append(getClientsDataTable(clientsQuery))
+
+  # creates pdf name and the pdf itself
+  pdfName = f'RelatorioClientes{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.pdf'
+  pdfPath = createReportPDF(pdfName, elems)
+
+  return pdfPath, pdfName
 
 # conditionals
 def createConditionalsReport(filters, conditionalsSummary, conditionalsQuery):
