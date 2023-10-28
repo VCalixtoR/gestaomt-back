@@ -1,9 +1,23 @@
-from flask import Flask, abort
+from flask import Flask, abort, send_file
 from flask_restful import Resource, Api, reqparse
 import traceback
 
 from utils.dbUtils import *
+from utils.generatePDFReport import createProductsReport, delayedRemoveReport
+from utils.utils import toBRCurrency
 from services.authentication import isAuthTokenValid
+
+def getProductInfo():
+
+  query = {}
+  query['products'] = dbGetAll(' SELECT product_id, product_name, product_code FROM tbl_product p WHERE p.is_product_active = TRUE; ')
+  query['collections'] = dbGetAll(' SELECT * FROM tbl_product_collection ORDER BY product_collection_pos; ')
+  query['types'] = dbGetAll(' SELECT * FROM tbl_product_type ORDER BY product_type_pos; ')
+  query['colors'] = dbGetAll(' SELECT * FROM tbl_product_color ORDER BY product_color_pos; ')
+  query['others'] = dbGetAll(' SELECT * FROM tbl_product_other ORDER BY product_other_pos; ')
+  query['sizes'] = dbGetAll(' SELECT * FROM tbl_product_size ORDER BY product_size_pos; ')
+
+  return query
 
 class ProductApi(Resource):
 
@@ -568,8 +582,8 @@ class ProductsApi(Resource):
       
     argsParser = reqparse.RequestParser()
     argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
-    argsParser.add_argument('limit', location='args', type=int, help='query limit, required', required=True)
-    argsParser.add_argument('offset', location='args', type=int, help='query offset, required', required=True)
+    argsParser.add_argument('limit', location='args', type=int, help='query limit')
+    argsParser.add_argument('offset', location='args', type=int, help='query offset')
     argsParser.add_argument('order_by', location='args', type=str, help='query orderby', required=True)
     argsParser.add_argument('order_by_asc', location='args', type=str, help='query orderby ascendant', required=True)
     argsParser.add_argument('product_code', location='args', type=str, help='product code')
@@ -583,6 +597,7 @@ class ProductsApi(Resource):
     argsParser.add_argument('product_quantity_final', location='args', type=int, help='final product quantity')
     argsParser.add_argument('product_price_initial', location='args', type=float, help='initial product price')
     argsParser.add_argument('product_price_final', location='args', type=float, help='final product price')
+    argsParser.add_argument('generate_pdf', location='args', type=str, help='if the expected return is a file')
     args = argsParser.parse_args()
     
     isValid, returnMessage = isAuthTokenValid(args)
@@ -681,6 +696,67 @@ class ProductsApi(Resource):
     countProducts = dbGetSingle(countScrypt, allFilterArgsNoLimit)
     productsQuery = dbGetAll(geralScrypt, allFilterArgs)
 
+    # pdf creation
+    if args.get('generate_pdf') == 'true' or args.get('generate_pdf') == True:
+
+      # filters
+      filters = []
+      productInfo = getProductInfo()
+
+      if args.get('product_code'):
+        filters.append(f"Código: {args.get('product_code')}")
+
+      if args.get('product_name'):
+        filters.append(f"Nome: {args.get('product_name')}")
+
+      if args.get('product_color_id'):
+        color = next(filter(lambda x: x['product_color_id'] == args.get('product_color_id'), productInfo['colors']))
+        filters.append(f"Cor: {color['product_color_name']}")
+
+      if args.get('product_other_id'):
+        other = next(filter(lambda x: x['product_other_id'] == args.get('product_other_id'), productInfo['others']))
+        filters.append(f"Outro: {other['product_other_name']}")
+
+      if args.get('product_size_id'):
+        size = next(filter(lambda x: x['product_size_id'] == args.get('product_size_id'), productInfo['sizes']))
+        filters.append(f"Tamanho: {size['product_size_name']}")
+
+      if args.get('product_collection_id'):
+        collection = next(filter(lambda x: x['product_collection_id'] == args.get('product_collection_id'), productInfo['collections']))
+        filters.append(f"Coleção: {collection['product_collection_name']}")
+
+      if args.get('product_type_id'):
+        type = next(filter(lambda x: x['product_type_id'] == args.get('product_type_id'), productInfo['types']))
+        filters.append(f"Tipo: {type['product_type_name']}")
+
+      if args.get('product_quantity_initial'):
+        filters.append(f"Quantidade, de: {args.get('product_quantity_initial')}")
+      
+      if args.get('product_quantity_final'):
+        filters.append(f"Quantidade, até: {args.get('product_quantity_final')}")
+      
+      if args.get('product_price_initial'):
+        filters.append(f"Valor, de: {toBRCurrency(args.get('product_price_initial'))}")
+      
+      if args.get('product_price_final'):
+        filters.append(f"Valor, até: {toBRCurrency(args.get('product_price_final'))}")
+      
+      appliedOrderStr = f"Ordenado em ordem {'ascendente' if orderByAsc else 'decrescente'} por "
+
+      if args['order_by'] == 'product_code':
+        appliedOrderStr += 'código'
+      elif args['order_by'] == 'product_name':
+        appliedOrderStr += 'nome'
+      
+      filters.append(appliedOrderStr)
+
+      # create and remove the pdf file after(1 minute)
+      pdfPath, pdfName = createProductsReport(filters, productsQuery)
+      delayedRemoveReport(pdfPath)
+
+      # sends
+      return send_file(pdfPath, as_attachment=True, download_name=pdfName)
+
     if not countProducts or not productsQuery:
       return { 'count': 0, 'products': [] }, 200
 
@@ -700,13 +776,5 @@ class ProductInfoApi(Resource):
     isValid, returnMessage = isAuthTokenValid(args)
     if not isValid:
       abort(401, 'Autenticação com o token falhou: ' + returnMessage)
-    
-    query = {}
-    query['products'] = dbGetAll(' SELECT product_id, product_name, product_code FROM tbl_product p WHERE p.is_product_active = TRUE; ')
-    query['collections'] = dbGetAll(' SELECT * FROM tbl_product_collection ORDER BY product_collection_pos; ')
-    query['types'] = dbGetAll(' SELECT * FROM tbl_product_type ORDER BY product_type_pos; ')
-    query['colors'] = dbGetAll(' SELECT * FROM tbl_product_color ORDER BY product_color_pos; ')
-    query['others'] = dbGetAll(' SELECT * FROM tbl_product_other ORDER BY product_other_pos; ')
-    query['sizes'] = dbGetAll(' SELECT * FROM tbl_product_size ORDER BY product_size_pos; ')
-    
-    return query, 200
+
+    return getProductInfo(), 200

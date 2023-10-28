@@ -31,7 +31,7 @@ class MyCanvas(canvas.Canvas):
     # Modify the content and styles according to the requirement
     page = "{curr_page}/{total_pages}".format(curr_page=self._pageNumber, total_pages=page_count)
     self.setFont("Helvetica", 10)
-    self.drawRightString(195*mm, 12*mm, page)
+    self.drawRightString(205*mm, 12*mm, page)
 
   def save(self):
     # Modify the save() function to add page-number before saving every page
@@ -95,6 +95,23 @@ def getPersonalizedStyles():
     spaceShrinkage=0.05,
   ))
   styles.add(ParagraphStyle(
+    name='Title_LEFT',
+    parent=styles['Normal'],
+    fontName='Helvetica-Bold',
+    wordWrap='LTR',
+    alignment=TA_LEFT,
+    fontSize=14,
+    leading=10,
+    textColor=colors.black,
+    borderPadding=0,
+    leftIndent=0,
+    rightIndent=0,
+    spaceAfter=0,
+    spaceBefore=0,
+    splitLongWords=True,
+    spaceShrinkage=0.05,
+  ))
+  styles.add(ParagraphStyle(
     name='Title_CENTER',
     parent=styles['Normal'],
     fontName='Helvetica-Bold',
@@ -114,13 +131,18 @@ def getPersonalizedStyles():
 
   return styles
 
+# return a title
+def getTitle(title, titleType='Title_LEFT'):
+  return Table([[Paragraph(title, getPersonalizedStyles()[titleType])]], colWidths=[200*mm])
+  # return Paragraph(title, getPersonalizedStyles()[titleType])
+
 # get head table
 def getReportHead(reportName):
 
   headLogo = Image(Path.cwd() / 'assets' / 'gestao_miss_teen_logo_side.png')
   headData = [[headLogo, reportName]]
 
-  headTable = Table(headData, colWidths=[70*mm, 110*mm])
+  headTable = Table(headData, colWidths=[80*mm, 120*mm])
   headTable.setStyle([
     ('FONT', (0,0), (-1,-1), 'Helvetica-Bold', 14),
     ('ALIGN', (0,0), (0,-1), 'LEFT'),
@@ -144,7 +166,7 @@ def getTwoColumnBoxTable(data, titleWithContent, titleWithoutContent):
       else:
         boxTableData.append([Paragraph(data[fpos], styles['Normal_LEFT'])])
   
-  boxTable = Table(boxTableData, colWidths=[95*mm, 85*mm])
+  boxTable = Table(boxTableData, colWidths=[100*mm, 100*mm])
   boxTable.setStyle([
     ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ('ALIGN', (0,0), (-1,-1), 'LEFT'),
@@ -156,22 +178,22 @@ def getTwoColumnBoxTable(data, titleWithContent, titleWithoutContent):
   return boxTable
 
 # get table with the sizes and numbers of columns specified in colWidths
-def getMultiColumnTable(data, colWidths):
+def getMultiColumnTable(data, colWidths, repeatRows=1, stripColors=True):
 
-  table = Table(data, colWidths=colWidths)
+  table = Table(data, colWidths=colWidths, repeatRows=repeatRows)
   table.setStyle([
-    ('FONT', (0,0), (-1,0), 'Helvetica-Bold', 14),
-    ('FONT', (0,1), (-1,-1), 'Helvetica', 9),
+    ('FONT', (0,0), (-1,-1), 'Helvetica', 9),
     ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-    ('ALIGN', (0,0), (-1,0), 'LEFT'),
-    ('ALIGN', (0,1), (-1,-1), 'CENTER'),
-    ('GRID', (0,1), (-1,-1), 1, colors.toColor('rgb(241,170,167)')),
-    ('BACKGROUND', (0,1), (-1,1), colors.toColor('rgb(241,170,167)')),
-    ('TEXTCOLOR', (0,1), (-1,-1), colors.toColor('rgb(54,52,52)'))
+    ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+    ('GRID', (0,0), (-1,-1), 1, colors.toColor('rgb(241,170,167)')),
+    ('BACKGROUND', (0,0), (-1,0), colors.toColor('rgb(241,170,167)')),
+    ('TEXTCOLOR', (0,0), (-1,-1), colors.toColor('rgb(54,52,52)'))
   ])
-  for i in range(2, len(data)):
-    if i % 2 == 1:
-      table.setStyle([('BACKGROUND', (0, i), (-1, i), colors.toColor('rgb(249,229,228)'))])
+  
+  if stripColors:
+    for i in range(1, len(data)):
+      if i % 2 == 0:
+        table.setStyle([('BACKGROUND', (0, i), (-1, i), colors.toColor('rgb(249,229,228)'))])
 
   return table
 
@@ -217,20 +239,19 @@ def getConditionalsSummaryTable(conditionalsSummary):
   ]
 
   summData = [
-    ['Resumo'],
     ['','Cancelado', 'Devolvido', 'Pendente', 'Total'],
     ['Quantidade'] + [str(quant) for quant in quants],
     ['Percentual da quantidade'] + [(str(round((quant/quants[3])*100))+'%') for quant in quants]
   ]
 
-  return getMultiColumnTable(summData, [60*mm, 30*mm, 30*mm, 30*mm, 30*mm])
+  return getMultiColumnTable(summData, [60*mm, 35*mm, 35*mm, 35*mm, 35*mm])
 
 # get conditionals data table
 def getConditionalsDataTable(conditionalsQuery):
 
   styles = getPersonalizedStyles()
 
-  data = [['Condicionais'],['Cod', 'Data', 'Status', 'Cliente', 'Vendedor']]
+  data = [['Código', 'Data', 'Status', 'Cliente', 'Vendedor']]
   for conditional in conditionalsQuery:
 
     data.append([
@@ -241,7 +262,66 @@ def getConditionalsDataTable(conditionalsQuery):
       Paragraph(conditional['conditional_employee_name'], styles['Normal_CENTER'])
     ])
 
-  return getMultiColumnTable(data, [36*mm, 36*mm, 36*mm, 36*mm, 36*mm])
+  return getMultiColumnTable(data, [40*mm, 40*mm, 40*mm, 40*mm, 40*mm])
+
+# get products data table
+def getProductsDataTable(productsQuery):
+
+  styles = getPersonalizedStyles()
+
+  #data = [['Produtos'],['Cod', 'Nome', 'Tipos', 'Coleções', 'Variações', '30', '32', '34', '36', '38', '40', '42', '44', 'PP', 'P', 'M', 'G']]
+  data = [['Código', 'Nome', 'Variações', '30', '32', '34', '36', '38', '40', '42', '44', 'PP', 'P', 'M', 'G']]
+  
+  for product in productsQuery:
+
+    # product
+    types = product['product_type_names'].replace(',', '<br/>') if product['product_type_names'] else ''
+    collections = product['product_collection_names'].replace(',', '<br/>') if product['product_collection_names'] else ''
+
+    # product variation
+    colorNames = product['product_color_names'].split(',')
+    otherNames = product['product_other_names'].split(',')
+    sizeNames = product['product_size_names'].split(',')
+    customizedQuantities = product['customized_product_quantityes'].split(',')
+    customizedPrices = product['customized_product_prices'].split(',')
+    
+    # Order = other, color, sizes
+    variations = {}
+    for customPPos in range(0, len(customizedQuantities)):
+      
+      # Name = otherName<br/>colorName
+      variationName = f'{otherNames[customPPos]}<br/>{colorNames[customPPos]}'
+      
+      # Initializate its structure and sizes
+      if otherNames and colorNames and not variations.get(variationName):
+        variations[variationName] = {}
+        for size in ['30','32','34','36','38','40','42','44','PP','P','M','G']:
+          variations[variationName][size] = 0
+
+      variations[variationName][sizeNames[customPPos]] = customizedQuantities[customPPos]
+
+    for variation in variations:
+      data.append([
+        Paragraph(str(product['product_code']), styles['Normal_CENTER']),
+        Paragraph(product['product_name'], styles['Normal_CENTER']),
+        #Paragraph(types, styles['Normal_CENTER']),
+        #Paragraph(collections, styles['Normal_CENTER']),
+        Paragraph(variation, styles['Normal_CENTER']),
+        Paragraph(str(variations[variation]['30']), styles['Normal_CENTER']),
+        Paragraph(str(variations[variation]['32']), styles['Normal_CENTER']),
+        Paragraph(str(variations[variation]['34']), styles['Normal_CENTER']),
+        Paragraph(str(variations[variation]['36']), styles['Normal_CENTER']),
+        Paragraph(str(variations[variation]['38']), styles['Normal_CENTER']),
+        Paragraph(str(variations[variation]['40']), styles['Normal_CENTER']),
+        Paragraph(str(variations[variation]['42']), styles['Normal_CENTER']),
+        Paragraph(str(variations[variation]['44']), styles['Normal_CENTER']),
+        Paragraph(str(variations[variation]['PP']), styles['Normal_CENTER']),
+        Paragraph(str(variations[variation]['P']), styles['Normal_CENTER']),
+        Paragraph(str(variations[variation]['M']), styles['Normal_CENTER']),
+        Paragraph(str(variations[variation]['G']), styles['Normal_CENTER']),
+      ])
+
+  return getMultiColumnTable(data, [25*mm, 25*mm, 30*mm, 10*mm, 10*mm, 10*mm, 10*mm, 10*mm, 10*mm, 10*mm, 10*mm, 10*mm, 10*mm, 10*mm, 10*mm])
 
 # get sales summary table
 def getSalesSummaryTable(salesSummary):
@@ -263,7 +343,6 @@ def getSalesSummaryTable(salesSummary):
     float(salesSummary['total_value'])
   ]
   summData = [
-    ['Resumo'],
     ['','Crédito', 'Cheque', 'Débito', 'Dinheiro', 'Pix', 'Total'],
     ['Quantidade'] + [str(quant) for quant in quants],
     ['Valor'] + [toBRCurrency(value) for value in values],
@@ -271,14 +350,14 @@ def getSalesSummaryTable(salesSummary):
     ['Percentual do valor'] + [(str(round((value/values[5])*100))+'%') for value in values]
   ]
 
-  return getMultiColumnTable(summData, [48*mm, 22*mm, 22*mm, 22*mm, 22*mm, 22*mm, 22*mm])
+  return getMultiColumnTable(summData, [50*mm, 25*mm, 25*mm, 25*mm, 25*mm, 25*mm, 25*mm])
 
 # get sales data table
 def getSalesDataTable(salesQuery):
 
   styles = getPersonalizedStyles()
 
-  data = [['Vendas'],['Cod', 'Data', 'Confirmado', 'Cliente', 'Vendedor', 'Formas de Pagamento', 'Valor']]
+  data = [['Cod', 'Data', 'Confirmado', 'Cliente', 'Vendedor', 'Formas de Pagamento', 'Valor']]
   for sale in salesQuery:
 
     payments = ''
@@ -299,39 +378,34 @@ def getSalesDataTable(salesQuery):
       Paragraph(toBRCurrency(float(sale['sale_total_value'])), styles['Normal_CENTER'])
     ])
 
-  return getMultiColumnTable(data, [12*mm, 21*mm, 17*mm, 25*mm, 25*mm, 58*mm, 22*mm])
+  return getMultiColumnTable(data, [16*mm, 21*mm, 17*mm, 29*mm, 29*mm, 62*mm, 26*mm])
 
 ##### Specific report creation functions #####
 
 # conditionals
 def createConditionalsReport(filters, conditionalsSummary, conditionalsQuery):
 
-  elems = []
-  styles = getPersonalizedStyles()
-
-  # get head and filter tables
-  headTable = getReportHead('Relatório de condicionais')
-  filterTable = getFilterTable(filters)
-
   # appends pdf initial elements
-  elems.append(headTable)
-  elems.append(Spacer(1, 1*mm))
-  elems.append(filterTable)
+  elems = []
+  elems.append(getReportHead('Relatório de condicionais'))
   elems.append(Spacer(1, 2*mm))
+  elems.append(getFilterTable(filters))
 
   # if not find conditionals, append not find message
   if not conditionalsSummary or not conditionalsQuery or len(conditionalsQuery) == 0:
-    elems.append(Spacer(1, 5*mm))
-    elems.append(Paragraph('Não foram encontradas condicionais com estes filtros', styles['Title_CENTER'])),
+    elems.append(Spacer(1, 4*mm))
+    elems.append(getTitle('Não foram encontradas condicionais com estes filtros', 'Title_CENTER'))
   
   # if find, append summary and data
   else:
-    summTable = getConditionalsSummaryTable(conditionalsSummary)
-    dataTable = getConditionalsDataTable(conditionalsQuery)
-
-    elems.append(summTable)
     elems.append(Spacer(1, 2*mm))
-    elems.append(dataTable)
+    elems.append(getTitle('Resumo'))
+    elems.append(Spacer(1, 2*mm))
+    elems.append(getConditionalsSummaryTable(conditionalsSummary))
+    elems.append(Spacer(1, 2*mm))
+    elems.append(getTitle('Condicionais'))
+    elems.append(Spacer(1, 2*mm))
+    elems.append(getConditionalsDataTable(conditionalsQuery))
 
   # creates pdf name and the pdf itself
   pdfName = f'RelatorioCondicionais{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.pdf'
@@ -339,35 +413,57 @@ def createConditionalsReport(filters, conditionalsSummary, conditionalsQuery):
 
   return pdfPath, pdfName
 
+# products
+def createProductsReport(filters, productsQuery):
+
+  # appends pdf initial elements
+  elems = []
+  elems.append(getReportHead('Relatório de produtos'))
+  elems.append(Spacer(1, 2*mm))
+  elems.append(getFilterTable(filters))
+
+  # if not find products, append not find message
+  if not productsQuery or len(productsQuery) == 0:
+    elems.append(Spacer(1, 4*mm))
+    elems.append(getTitle('Não foram encontrados produtos com estes filtros', 'Title_CENTER')),
+  
+  # if find, append data
+  else:
+    elems.append(Spacer(1, 2*mm))
+    elems.append(getTitle('Produtos'))
+    elems.append(Spacer(1, 2*mm))
+    elems.append(getProductsDataTable(productsQuery))
+
+  # creates pdf name and the pdf itself
+  pdfName = f'RelatorioProdutos{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.pdf'
+  pdfPath = createReportPDF(pdfName, elems)
+
+  return pdfPath, pdfName
+
 # sales
 def createSalesReport(filters, salesSummary, salesQuery):
 
-  elems = []
-  styles = getPersonalizedStyles()
-
-  # get head and filter tables
-  headTable = getReportHead('Relatório de vendas')
-  filterTable = getFilterTable(filters)
-
   # appends pdf initial elements
-  elems.append(headTable)
+  elems = []
+  elems.append(getReportHead('Relatório de vendas'))
   elems.append(Spacer(1, 1*mm))
-  elems.append(filterTable)
-  elems.append(Spacer(1, 2*mm))
+  elems.append(getFilterTable(filters))
 
   # if not find sales, append not find message
   if not salesSummary or not salesQuery or len(salesQuery) == 0:
-    elems.append(Spacer(1, 5*mm))
-    elems.append(Paragraph('Não foram encontradas vendas com estes filtros', styles['Title_CENTER'])),
+    elems.append(Spacer(1, 4*mm))
+    elems.append(getTitle('Não foram encontradas vendas com estes filtros', 'Title_CENTER'))
   
   # if find, append summary and data
   else:
-    summTable = getSalesSummaryTable(salesSummary)
-    dataTable = getSalesDataTable(salesQuery)
-
-    elems.append(summTable)
     elems.append(Spacer(1, 2*mm))
-    elems.append(dataTable)
+    elems.append(getTitle('Resumo'))
+    elems.append(Spacer(1, 2*mm))
+    elems.append(getSalesSummaryTable(salesSummary))
+    elems.append(Spacer(1, 2*mm))
+    elems.append(getTitle('Vendas'))
+    elems.append(Spacer(1, 2*mm))
+    elems.append(getSalesDataTable(salesQuery))
 
   # creates pdf name and the pdf itself
   pdfName = f'RelatorioVendas{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.pdf'
