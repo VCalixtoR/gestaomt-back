@@ -1,5 +1,5 @@
 from dotenv import load_dotenv, find_dotenv
-from patches.mysqlPatches import createSaleHasPaymentMethodInstallment
+from patches.mysqlPatches import fixClientChildrenProductSizeId
 from utils.sistemConfig import getMissingEnvironmentVar
 
 # Env vars
@@ -12,5 +12,5 @@ if getMissingEnvironmentVar():
     print('# Error - Missing ' + str(missingVar) + ' environment variable')
     exit()
 
-# Warning: Make a backup before using this script
-createSaleHasPaymentMethodInstallment()
+# Warning: Make a backup before using any changing script
+fixClientChildrenProductSizeId()

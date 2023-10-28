@@ -2,6 +2,58 @@ import traceback
 import random
 from utils.dbUtils import *
 
+def fixClientChildrenProductSizeId():
+
+  print("# Starting fixClientChildrenProductSizeId patch...")
+  
+  dbObjectIns = startGetDbObject()
+  try:
+    print("\tGet Client Children...")
+    cchildren = dbGetAll(
+      ' SELECT children_id, children_client_id, children_name, children_birth_date, children_product_size_id FROM tbl_client_children cc ORDER BY cc.children_id; ',
+      transactionMode=True,
+      dbObjectIns=dbObjectIns
+    )
+
+    # use random numbers to print children before and after
+    randomNumbers = [random.randrange(0,len(cchildren)) for _ in range(15)]
+
+    print("\tChildren Before:")
+    for number in randomNumbers:
+      print(f"\t\t{cchildren[number]}")
+
+    print("\tUpdating Children Product Size Id...")
+    for cchild in cchildren:
+      dbExecute(
+        ' UPDATE tbl_client_children SET children_product_size_id = %s WHERE children_id = %s; ',
+        [cchild['children_product_size_id']+1, cchild["children_id"]],
+        transactionMode=True,
+        dbObjectIns=dbObjectIns
+      )
+    
+    print("\tGet Updated Client Children...")
+    cchildren = dbGetAll(
+      ' SELECT children_id, children_client_id, children_name, children_birth_date, children_product_size_id FROM tbl_client_children cc ORDER BY cc.children_id; ',
+      transactionMode=True,
+      dbObjectIns=dbObjectIns
+    )
+
+    print("\tChildren After:")
+    for number in randomNumbers:
+      print(f"\t\t{cchildren[number]}")
+
+  except Exception as e:
+    dbRollback(dbObjectIns)
+    print(f"\tRollback done! An error ocurred: {str(e)}")
+    traceback.print_exc()
+    return False
+
+  print("\tCommiting changes...")
+  dbCommit(dbObjectIns)
+
+  print("\tDone without errors!")
+  return True
+
 def createSaleHasPaymentMethodInstallment():
 
   print("# Starting createSaleHasPaymentMethodInstallment patch...")
