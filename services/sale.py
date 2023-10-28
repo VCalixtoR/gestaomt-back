@@ -6,7 +6,7 @@ import os
 
 from utils.dbUtils import *
 from utils.utils import toBRCurrency
-from utils.generatePDFReport import createSalesReport, delayedRemoveReport
+from utils.generatePDFReport import createSaleReport, createSalesReport, delayedRemoveReport
 from services.authentication import isAuthTokenValid
 
 class SaleApi(Resource):
@@ -186,6 +186,7 @@ class SaleApi(Resource):
     argsParser = reqparse.RequestParser()
     argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
     argsParser.add_argument('sale_id', location='args', type=int, help='sale id, required', required=True)
+    argsParser.add_argument('generate_pdf', location='args', type=str, help='if the expected return is a file')
     args = argsParser.parse_args()
     
     isValid, returnMessage = isAuthTokenValid(args)
@@ -239,6 +240,15 @@ class SaleApi(Resource):
       '   ORDER BY product_code; ',
       [(args['sale_id'])])
     
+    if args.get('generate_pdf') == 'true' or args.get('generate_pdf') == True:
+      
+      # create and remove the pdf file after(1 minute)
+      pdfPath, pdfName = createSaleReport(saleQuery)
+      delayedRemoveReport(pdfPath)
+
+      # sends
+      return send_file(pdfPath, as_attachment=True, download_name=pdfName)
+
     if not saleQuery.get('sale_products') or len(saleQuery['sale_products']) == 0:
       return 'Produtos da venda não encontrados', 404
     

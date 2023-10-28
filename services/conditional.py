@@ -4,7 +4,7 @@ import datetime
 import traceback
 
 from utils.dbUtils import *
-from utils.generatePDFReport import createConditionalsReport, delayedRemoveReport
+from utils.generatePDFReport import createConditionalReport, createConditionalsReport, delayedRemoveReport
 from services.authentication import isAuthTokenValid
 
 class ConditionalApi(Resource):
@@ -145,6 +145,7 @@ class ConditionalApi(Resource):
     argsParser = reqparse.RequestParser()
     argsParser.add_argument('Authorization', location='headers', type=str, help='Bearer with jwt given by server in user autentication, required', required=True)
     argsParser.add_argument('conditional_id', location='args', type=int, help='conditional id, required', required=True)
+    argsParser.add_argument('generate_pdf', location='args', type=str, help='if the expected return is a file')
     args = argsParser.parse_args()
     
     isValid, returnMessage = isAuthTokenValid(args)
@@ -187,6 +188,15 @@ class ConditionalApi(Resource):
       '   WHERE c.conditional_id = %s AND chp.customized_product_id = cp.customized_product_id '
       '   ORDER BY p.product_code; ',
       [(args['conditional_id'])])
+    
+    if args.get('generate_pdf') == 'true' or args.get('generate_pdf') == True:
+      
+      # create and remove the pdf file after(1 minute)
+      pdfPath, pdfName = createConditionalReport(conditionalQuery)
+      delayedRemoveReport(pdfPath)
+
+      # sends
+      return send_file(pdfPath, as_attachment=True, download_name=pdfName)
     
     if not conditionalQuery.get('conditional_products') or len(conditionalQuery['conditional_products']) == 0:
       return 'Produtos da Condicional não encontrados', 404

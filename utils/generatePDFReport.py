@@ -307,6 +307,55 @@ def getConditionalsDataTable(conditionalsQuery):
 
   return getMultiColumnTable(data, [40*mm, 40*mm, 40*mm, 40*mm, 40*mm])
 
+# bellow are 3 functions used in simple conditional report
+def getConditionalClientTable(conditionalQuery):
+
+  styles = getPersonalizedStyles()
+  client = conditionalQuery['conditional_client']
+
+  data = [
+    ['Nome', 'CPF'],
+    [
+      Paragraph(client['client_name'], styles['Normal_CENTER']),
+      Paragraph(client['client_cpf'] if client.get('client_cpf') else '', styles['Normal_CENTER'])
+    ]
+  ]
+  return getMultiColumnTable(data, [100*mm, 100*mm])
+
+def getConditionalTable(conditionalQuery):
+
+  styles = getPersonalizedStyles()
+  creationDate = datetime.datetime.strptime(conditionalQuery['conditional_creation_date_time'], '%Y-%m-%d %H:%M:%S').strftime("%d/%m/%Y %H:%M:%S")
+
+  data = [
+    ['Código', 'Data e hora', 'Status'],
+    [
+      Paragraph(f"COND-{conditionalQuery['conditional_id']}", styles['Normal_CENTER']),
+      Paragraph(creationDate, styles['Normal_CENTER']),
+      Paragraph(conditionalQuery['conditional_status'], styles['Normal_CENTER'])
+    ]
+  ]
+
+  return getMultiColumnTable(data, [60*mm, 70*mm, 70*mm])
+
+def getConditionalProductsTable(conditionalQuery):
+
+  styles = getPersonalizedStyles()
+  products = conditionalQuery['conditional_products']
+
+  data = [['Código', 'Nome', 'Tamanho', 'Cor', 'Outro', 'Quantidade']]
+  for product in products:
+    data.append([
+      Paragraph(str(product['product_code']), styles['Normal_CENTER']),
+      Paragraph(product['product_name'], styles['Normal_CENTER']),
+      Paragraph(product['product_size_name'], styles['Normal_CENTER']),
+      Paragraph(product['product_color_name'] if product.get('product_color_name') else '', styles['Normal_CENTER']),
+      Paragraph(product['product_other_name'] if product.get('product_other_name') else '', styles['Normal_CENTER']),
+      Paragraph(str(product['conditional_has_product_quantity']), styles['Normal_CENTER'])
+    ])
+
+  return getMultiColumnTable(data, [30*mm, 50*mm, 30*mm, 30*mm, 30*mm, 30*mm])
+
 # get products data table
 def getProductsDataTable(productsQuery):
 
@@ -423,7 +472,78 @@ def getSalesDataTable(salesQuery):
 
   return getMultiColumnTable(data, [16*mm, 21*mm, 17*mm, 29*mm, 29*mm, 62*mm, 26*mm])
 
-##### Specific report creation functions #####
+# bellow are 3 functions used in simple sale report
+def getSaleClientTable(saleQuery):
+  
+  styles = getPersonalizedStyles()
+  client = saleQuery['sale_client']
+
+  data = [
+    ['Nome', 'CPF'],
+    [
+      Paragraph(client['client_name'], styles['Normal_CENTER']),
+      Paragraph(client['client_cpf'] if client.get('client_cpf') else '', styles['Normal_CENTER'])
+    ]
+  ]
+  return getMultiColumnTable(data, [100*mm, 100*mm])
+
+def getSaleTable(saleQuery):
+  
+  styles = getPersonalizedStyles()
+  saleRawValue = saleQuery['sale_total_value']/(1-saleQuery['sale_total_discount_percentage'])
+  creationDate = datetime.datetime.strptime(saleQuery['sale_creation_date_time'], '%Y-%m-%d %H:%M:%S').strftime("%d/%m/%Y %H:%M:%S")
+
+  payments = ''
+  paymentMethodNames = saleQuery['payment_method_names'].split(',')
+  paymentMethodInstallmentNumbers = saleQuery['payment_method_installment_numbers'].split(',')
+  paymentMethodValues = saleQuery['payment_method_values'].split(',')
+  
+  for payPos in range(0, len(paymentMethodNames)):
+    payments = payments + ('<br/>' if len(payments) > 0 else '') + f"{paymentMethodNames[payPos]} ({paymentMethodInstallmentNumbers[payPos]} X {toBRCurrency(float(paymentMethodValues[payPos]))})"
+
+  data = [
+    [
+      'Código',
+      Paragraph('Data e<br/>hora', styles['Normal_CENTER']),
+      Paragraph('Percentual de<br/>desconto', styles['Normal_CENTER']),
+      Paragraph('Valor de<br/>desconto', styles['Normal_CENTER']),
+      'Valor total',
+      Paragraph('Valor total<br/>com desconto', styles['Normal_CENTER']),
+      'Formas de pagamento e Parcelas'
+    ],
+    [
+      Paragraph(f"VEND-{saleQuery['sale_id']}", styles['Normal_CENTER']),
+      Paragraph(creationDate, styles['Normal_CENTER']),
+      Paragraph(f"{str(round(saleQuery['sale_total_discount_percentage']*100))}%", styles['Normal_CENTER']),
+      Paragraph(toBRCurrency(saleRawValue-saleQuery['sale_total_value']), styles['Normal_CENTER']),
+      Paragraph(toBRCurrency(saleRawValue), styles['Normal_CENTER']),
+      Paragraph(toBRCurrency(saleQuery['sale_total_value']), styles['Normal_CENTER']),
+      Paragraph(payments, styles['Normal_CENTER'])
+    ]
+  ]
+
+  return getMultiColumnTable(data, [22*mm, 22*mm, 23*mm, 23*mm, 25*mm, 25*mm, 60*mm])
+
+def getSaleProductsTable(saleQuery):
+
+  styles = getPersonalizedStyles()
+  products = saleQuery['sale_products']
+
+  data = [['Código', 'Nome', 'Tamanho', 'Cor', 'Outro', 'Valor', 'Quantidade']]
+  for product in products:
+    data.append([
+      Paragraph(str(product['product_code']), styles['Normal_CENTER']),
+      Paragraph(product['product_name'], styles['Normal_CENTER']),
+      Paragraph(product['product_size_name'], styles['Normal_CENTER']),
+      Paragraph(product['product_color_name'] if product.get('product_color_name') else '', styles['Normal_CENTER']),
+      Paragraph(product['product_other_name'] if product.get('product_other_name') else '', styles['Normal_CENTER']),
+      Paragraph(toBRCurrency(product['sale_has_product_price']), styles['Normal_CENTER']),
+      Paragraph(str(product['sale_has_product_quantity']), styles['Normal_CENTER'])
+    ])
+
+  return getMultiColumnTable(data, [25*mm, 40*mm, 25*mm, 30*mm, 30*mm, 25*mm, 25*mm])
+
+##### Report creation functions #####
 
 # clients
 def createClientsReport(filters, clientsQuery):
@@ -453,6 +573,33 @@ def createClientsReport(filters, clientsQuery):
   return pdfPath, pdfName
 
 # conditionals
+def createConditionalReport(conditionalQuery):
+
+  # appends pdf initial elements
+  elems = []
+  elems.append(getReportHead(f"Condicional {conditionalQuery['conditional_id']}"))
+  elems.append(Spacer(1, 2*mm))
+
+  elems.append(getTitle('Cliente'))
+  elems.append(Spacer(1, 2*mm))
+  elems.append(getConditionalClientTable(conditionalQuery))
+  elems.append(Spacer(1, 2*mm))
+
+  elems.append(getTitle('Condicional'))
+  elems.append(Spacer(1, 2*mm))
+  elems.append(getConditionalTable(conditionalQuery))
+  elems.append(Spacer(1, 2*mm))
+
+  elems.append(getTitle('Produtos'))
+  elems.append(Spacer(1, 2*mm))
+  elems.append(getConditionalProductsTable(conditionalQuery))
+
+  # creates pdf name and the pdf itself
+  pdfName = f'RelatorioCondicional{conditionalQuery["conditional_id"]}_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.pdf'
+  pdfPath = createReportPDF(pdfName, elems)
+
+  return pdfPath, pdfName
+
 def createConditionalsReport(filters, conditionalsSummary, conditionalsQuery):
 
   # appends pdf initial elements
@@ -511,6 +658,33 @@ def createProductsReport(filters, productsQuery):
   return pdfPath, pdfName
 
 # sales
+def createSaleReport(saleQuery):
+
+  # appends pdf initial elements
+  elems = []
+  elems.append(getReportHead(f"Venda {saleQuery['sale_id']}"))
+  elems.append(Spacer(1, 2*mm))
+
+  elems.append(getTitle('Cliente'))
+  elems.append(Spacer(1, 2*mm))
+  elems.append(getSaleClientTable(saleQuery))
+  elems.append(Spacer(1, 2*mm))
+
+  elems.append(getTitle('Venda'))
+  elems.append(Spacer(1, 2*mm))
+  elems.append(getSaleTable(saleQuery))
+  elems.append(Spacer(1, 2*mm))
+
+  elems.append(getTitle('Produtos'))
+  elems.append(Spacer(1, 2*mm))
+  elems.append(getSaleProductsTable(saleQuery))
+
+  # creates pdf name and the pdf itself
+  pdfName = f'RelatorioVenda{saleQuery["sale_id"]}_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.pdf'
+  pdfPath = createReportPDF(pdfName, elems)
+
+  return pdfPath, pdfName
+
 def createSalesReport(filters, salesSummary, salesQuery):
 
   # appends pdf initial elements
