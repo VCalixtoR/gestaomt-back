@@ -371,8 +371,8 @@ def getProductsDataTable(productsQuery):
     collections = product['product_collection_names'].replace(',', '<br/>') if product['product_collection_names'] else ''
 
     # product variation
-    colorNames = product['product_color_names'].split(',')
-    otherNames = product['product_other_names'].split(',')
+    colorNames = product['product_color_names'].split(',') if product['product_color_names'] else None
+    otherNames = product['product_other_names'].split(',') if product['product_other_names'] else None
     sizeNames = product['product_size_names'].split(',')
     customizedQuantities = product['customized_product_quantityes'].split(',')
     customizedPrices = product['customized_product_prices'].split(',')
@@ -382,10 +382,16 @@ def getProductsDataTable(productsQuery):
     for customPPos in range(0, len(customizedQuantities)):
       
       # Name = otherName<br/>colorName
-      variationName = f'{otherNames[customPPos]}<br/>{colorNames[customPPos]}'
+      variationName = 'Single'
+      if otherNames and colorNames:
+        variationName = f'{otherNames[customPPos]}<br/>{colorNames[customPPos]}'
+      elif otherNames:
+        variationName = f'{otherNames[customPPos]}'
+      elif colorNames:
+        variationName = f'{colorNames[customPPos]}'
       
       # Initializate its structure and sizes
-      if otherNames and colorNames and not variations.get(variationName):
+      if not variations.get(variationName):
         variations[variationName] = {}
         for size in ['30','32','34','36','38','40','42','44','PP','P','M','G']:
           variations[variationName][size] = 0
@@ -398,7 +404,7 @@ def getProductsDataTable(productsQuery):
         Paragraph(product['product_name'], styles['Normal_CENTER']),
         #Paragraph(types, styles['Normal_CENTER']),
         #Paragraph(collections, styles['Normal_CENTER']),
-        Paragraph(variation, styles['Normal_CENTER']),
+        Paragraph(variation if variation != 'Single' else '', styles['Normal_CENTER']),
         Paragraph(str(variations[variation]['30']), styles['Normal_CENTER']),
         Paragraph(str(variations[variation]['32']), styles['Normal_CENTER']),
         Paragraph(str(variations[variation]['34']), styles['Normal_CENTER']),
