@@ -307,20 +307,39 @@ def getConditionalsDataTable(conditionalsQuery):
 
   return getMultiColumnTable(data, [40*mm, 40*mm, 40*mm, 40*mm, 40*mm])
 
-# bellow are 3 functions used in simple conditional report
-def getConditionalClientTable(conditionalQuery):
+# bellow are 4 functions used in simple conditional report
+def getConditionalClientTable1(conditionalQuery):
 
   styles = getPersonalizedStyles()
   client = conditionalQuery['conditional_client']
 
   data = [
-    ['Nome', 'CPF'],
+    ['Nome', 'CPF', 'CEP', 'Estado', 'Cidade'],
     [
       Paragraph(client['client_name'], styles['Normal_CENTER']),
-      Paragraph(client['client_cpf'] if client.get('client_cpf') else '', styles['Normal_CENTER'])
+      Paragraph(client['client_cpf'] if client.get('client_cpf') else '', styles['Normal_CENTER']),
+      Paragraph(client['client_cep'] if client.get('client_cep') else '', styles['Normal_CENTER']),
+      Paragraph(client['client_state'] if client.get('client_state') else '', styles['Normal_CENTER']),
+      Paragraph(client['client_city'] if client.get('client_city') else '', styles['Normal_CENTER'])
     ]
   ]
-  return getMultiColumnTable(data, [100*mm, 100*mm])
+  return getMultiColumnTable(data, [60*mm, 40*mm, 40*mm, 20*mm, 40*mm])
+
+def getConditionalClientTable2(conditionalQuery):
+
+  styles = getPersonalizedStyles()
+  client = conditionalQuery['conditional_client']
+
+  data = [
+    ['Bairro', 'Endereço', 'Nº', 'Complemento'],
+    [
+      Paragraph(client['client_neighborhood'] if client.get('client_neighborhood') else '', styles['Normal_CENTER']),
+      Paragraph(client['client_adress'] if client.get('client_adress') else '', styles['Normal_CENTER']),
+      Paragraph(client['client_number'] if client.get('client_number') else '', styles['Normal_CENTER']),
+      Paragraph(client['client_complement'] if client.get('client_complement') else '', styles['Normal_CENTER'])
+    ]
+  ]
+  return getMultiColumnTable(data, [40*mm, 70*mm, 20*mm, 70*mm])
 
 def getConditionalTable(conditionalQuery):
 
@@ -478,20 +497,39 @@ def getSalesDataTable(salesQuery):
 
   return getMultiColumnTable(data, [16*mm, 21*mm, 17*mm, 29*mm, 29*mm, 62*mm, 26*mm])
 
-# bellow are 3 functions used in simple sale report
-def getSaleClientTable(saleQuery):
-  
+# bellow are 4 functions used in simple sale report
+def getSaleClientTable1(saleQuery):
+
   styles = getPersonalizedStyles()
   client = saleQuery['sale_client']
 
   data = [
-    ['Nome', 'CPF'],
+    ['Nome', 'CPF', 'CEP', 'Estado', 'Cidade'],
     [
       Paragraph(client['client_name'], styles['Normal_CENTER']),
-      Paragraph(client['client_cpf'] if client.get('client_cpf') else '', styles['Normal_CENTER'])
+      Paragraph(client['client_cpf'] if client.get('client_cpf') else '', styles['Normal_CENTER']),
+      Paragraph(client['client_cep'] if client.get('client_cep') else '', styles['Normal_CENTER']),
+      Paragraph(client['client_state'] if client.get('client_state') else '', styles['Normal_CENTER']),
+      Paragraph(client['client_city'] if client.get('client_city') else '', styles['Normal_CENTER'])
     ]
   ]
-  return getMultiColumnTable(data, [100*mm, 100*mm])
+  return getMultiColumnTable(data, [60*mm, 40*mm, 40*mm, 20*mm, 40*mm])
+
+def getSaleClientTable2(saleQuery):
+
+  styles = getPersonalizedStyles()
+  client = saleQuery['sale_client']
+
+  data = [
+    ['Bairro', 'Endereço', 'Nº', 'Complemento'],
+    [
+      Paragraph(client['client_neighborhood'] if client.get('client_neighborhood') else '', styles['Normal_CENTER']),
+      Paragraph(client['client_adress'] if client.get('client_adress') else '', styles['Normal_CENTER']),
+      Paragraph(client['client_number'] if client.get('client_number') else '', styles['Normal_CENTER']),
+      Paragraph(client['client_complement'] if client.get('client_complement') else '', styles['Normal_CENTER'])
+    ]
+  ]
+  return getMultiColumnTable(data, [40*mm, 70*mm, 20*mm, 70*mm])
 
 def getSaleTable(saleQuery):
   
@@ -588,7 +626,8 @@ def createConditionalReport(conditionalQuery):
 
   elems.append(getTitle('Cliente'))
   elems.append(Spacer(1, 2*mm))
-  elems.append(getConditionalClientTable(conditionalQuery))
+  elems.append(getConditionalClientTable1(conditionalQuery))
+  elems.append(getConditionalClientTable2(conditionalQuery))
   elems.append(Spacer(1, 2*mm))
 
   elems.append(getTitle('Condicional'))
@@ -673,7 +712,8 @@ def createSaleReport(saleQuery):
 
   elems.append(getTitle('Cliente'))
   elems.append(Spacer(1, 2*mm))
-  elems.append(getSaleClientTable(saleQuery))
+  elems.append(getSaleClientTable1(saleQuery))
+  elems.append(getSaleClientTable2(saleQuery))
   elems.append(Spacer(1, 2*mm))
 
   elems.append(getTitle('Venda'))
