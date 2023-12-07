@@ -335,7 +335,7 @@ def getConditionalClientTable2(conditionalQuery):
     [
       Paragraph(client['client_neighborhood'] if client.get('client_neighborhood') else '', styles['Normal_CENTER']),
       Paragraph(client['client_adress'] if client.get('client_adress') else '', styles['Normal_CENTER']),
-      Paragraph(client['client_number'] if client.get('client_number') else '', styles['Normal_CENTER']),
+      Paragraph(str(client['client_number']) if client.get('client_number') != None else '', styles['Normal_CENTER']),
       Paragraph(client['client_complement'] if client.get('client_complement') else '', styles['Normal_CENTER'])
     ]
   ]
@@ -525,7 +525,7 @@ def getSaleClientTable2(saleQuery):
     [
       Paragraph(client['client_neighborhood'] if client.get('client_neighborhood') else '', styles['Normal_CENTER']),
       Paragraph(client['client_adress'] if client.get('client_adress') else '', styles['Normal_CENTER']),
-      Paragraph(client['client_number'] if client.get('client_number') else '', styles['Normal_CENTER']),
+      Paragraph(str(client['client_number']) if client.get('client_number') != None else '', styles['Normal_CENTER']),
       Paragraph(client['client_complement'] if client.get('client_complement') else '', styles['Normal_CENTER'])
     ]
   ]
